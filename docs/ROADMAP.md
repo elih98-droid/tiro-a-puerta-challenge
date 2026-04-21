@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 20 de abril de 2026
+**Última actualización:** 21 de abril de 2026
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -18,9 +18,12 @@
 - [x] **Schema de DB aplicado en Supabase** — 11 tablas, índices, constraints, RLS y triggers básicos (`set_updated_at`, `validate_pick_timing`, `log_pick_history`) creados manualmente en el SQL Editor.
 - [x] **Migraciones versionadas en el repo** — `supabase/migrations/` con 3 archivos que documentan lo aplicado manualmente (`20260415000000`, `20260415000001`, `20260415000002`).
 
+- [x] **Sistema completo de autenticación** — signup, login, logout, OAuth (solo Google), reset y update password. Trigger `handle_new_user` sincroniza `auth.users → public.users + user_status`. Trigger `sync_email_verified` mantiene `email_verified` actualizado.
+- [x] **Dashboard del usuario** (`/dashboard`) — muestra estado en el torneo (vivo/eliminado, días sobrevividos, goles acumulados) y pick del día actual. Layout con nav y logout.
+
 ### Lo que NO está construido aún
 
-El trigger de sincronización `auth.users → public.users`, autenticación, picks, leaderboard, emails, cron jobs, etc. (detallado en las tareas de abajo).
+Picks, leaderboard, emails, cron jobs, precarga de datos del torneo, etc. (detallado en las tareas de abajo).
 
 ---
 
@@ -41,7 +44,7 @@ Las tareas están ordenadas de mayor a menor prioridad. Dependencias indicadas d
 - [x] Versionar scripts SQL en `supabase/migrations/` (3 archivos: schema, RLS, funciones/triggers).
 - [ ] Crear funciones DB: `process_match_day_results()`, `get_available_players()` (`database-schema.md §7`). *(Se implementarán cuando se construya la evaluación automática de picks.)*
 
-#### 2. Sistema de autenticación ← **PRÓXIMA TAREA**
+#### 2. Sistema de autenticación ✅
 Basado en `game-rules.md §9` y `database-schema.md §3.1`.
 
 - [x] **Trigger `handle_new_user`**: función SQL escrita, versionada en `supabase/migrations/20260420000000_handle_new_user_trigger.sql` y aplicada en Supabase. Sincroniza `auth.users → public.users + public.user_status` al crear cuenta.
@@ -52,7 +55,7 @@ Basado en `game-rules.md §9` y `database-schema.md §3.1`.
 - [x] **Página de login** (`/login`):
   - Email + contraseña.
   - Google Sign-In (OAuth).
-  - Apple Sign-In (OAuth).
+  - ~~Apple Sign-In (OAuth).~~ *(Descartado — requiere Apple Developer Program $99/año y configuración compleja. Solo Google.)*
   - Link "¿Olvidaste tu contraseña?".
 - [x] **Verificación de email**:
   - Flujo de confirmación por email para usuarios registrados con email+contraseña.
@@ -70,7 +73,20 @@ Basado en `game-rules.md §9` y `database-schema.md §3.1`.
 - [x] **Server Actions de auth** (`lib/auth/actions.ts`): `signUp`, `signIn`, `signInWithOAuth`, `signOut`, `resetPassword`, `updatePassword`.
 - [ ] **Cerrar sesión** (logout): botón/acción visible en la app (se agrega en el dashboard).
 - [ ] **Cierre de registros**: bloquear nuevos signups a partir del 11 de junio de 2026, 12:55 pm CDMX (`game-rules.md §9.5`). *(Se implementa cuando se construya la validación de fechas del torneo.)*
-- [ ] **Configurar OAuth en Supabase**: habilitar Google y Apple en Authentication → Providers del dashboard de Supabase.
+- [x] **Trigger `sync_email_verified`**: aplicado en Supabase. Actualiza `public.users.email_verified` cuando el usuario confirma su email.
+- [ ] **Configurar Google OAuth en Supabase**: habilitar Google en Authentication → Providers del dashboard de Supabase. *(Requiere credenciales en Google Cloud Console.)*
+
+#### 2.5. Aprobación manual de cuentas (ambiente cerrado)
+El juego es cerrado: cualquiera puede registrarse pero necesita aprobación explícita del admin para jugar.
+
+- [ ] **Migración de DB**: agregar columna `is_approved BOOLEAN DEFAULT FALSE` a `public.users`. Actualizar trigger `handle_new_user` para que nuevos usuarios arranquen con `is_approved = false`. El admin se aprueba manualmente en Supabase la primera vez.
+- [ ] **Página `/pending-approval`**: pantalla informativa para usuarios autenticados pero no aprobados ("Tu cuenta está en revisión, pronto recibirás un email").
+- [ ] **Actualizar proxy**: si el usuario está autenticado pero `is_approved = false`, redirigir a `/pending-approval` en lugar de dejar entrar al juego.
+- [ ] **Página `/admin/approvals`** (protegida): lista de usuarios pendientes con nombre, email, fecha de registro. Botones de aprobar y rechazar. Solo accesible si `users.is_admin = true`.
+- [ ] **Columna `is_admin`**: agregar `is_admin BOOLEAN DEFAULT FALSE` a `public.users`. Marcarte a ti manualmente en Supabase.
+- [ ] **Server Action `approveUser` / `rejectUser`**: valida que quien llama es admin, actualiza `is_approved` en DB.
+- [ ] *(Opcional)* **Email al admin** cuando alguien se registra (vía Resend). *(Se puede diferir hasta que se configure Resend en tarea 9.)*
+- [ ] *(Opcional)* **Email al usuario** cuando es aprobado o rechazado. *(Ídem, diferir a tarea 9.)*
 
 #### 3. Precarga de datos del torneo
 - [ ] Decidir proveedor de datos deportivos (ver `game-rules.md §13.3`). ⚠️ Decisión pendiente del usuario.
@@ -83,10 +99,10 @@ Basado en `game-rules.md §9` y `database-schema.md §3.1`.
 
 ### 🟠 PRIORIDAD MEDIA-ALTA — Mecánica central del juego
 
-#### 4. Dashboard del usuario (post-login)
-- [ ] Página principal del usuario autenticado: estado actual (vivo/eliminado), pick del día, días sobrevividos.
-- [ ] Mostrar jugadores quemados del usuario.
-- [ ] Mostrar deadline del día actual.
+#### 4. Dashboard del usuario (post-login) ✅
+- [x] Página principal del usuario autenticado: estado actual (vivo/eliminado), pick del día, días sobrevividos.
+- [x] Layout con nav (username) y botón de logout.
+- [ ] Mostrar jugadores quemados del usuario. *(Se agrega cuando haya picks.)*
 
 #### 5. Sistema de picks
 - [ ] **Pool de jugadores elegibles**: llamar a `get_available_players()` para mostrar opciones del día.
@@ -185,7 +201,9 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Setup inicial (Next.js, Supabase, env) | ✅ Completo |
 | Documentación base | ✅ Completo |
 | Schema de base de datos | ✅ Aplicado en Supabase / versionado en repo |
-| Autenticación | ✅ Completo (pendiente: configurar OAuth en Supabase + botón logout en dashboard) |
+| Autenticación | ✅ Completo |
+| Aprobación manual de cuentas | ⏳ Pendiente |
+| Dashboard del usuario | ✅ Completo (básico) |
 | Precarga de datos del torneo | ⏳ Pendiente (depende de decisión de proveedor) |
 | Mecánica de picks | ⏳ Pendiente |
 | Leaderboard | ⏳ Pendiente |

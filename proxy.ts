@@ -1,9 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 
-// Routes that require the user to be authenticated.
+// Routes that require the user to be authenticated AND approved.
 // Any path that *starts with* one of these strings is protected.
 const PROTECTED_ROUTES = ['/dashboard', '/pick', '/profile']
+
+// Routes that require the user to be authenticated AND an admin.
+const ADMIN_ROUTES = ['/admin']
 
 // Routes for unauthenticated users only.
 // An already-authenticated user visiting these gets redirected to /dashboard.
@@ -60,13 +63,48 @@ export async function proxy(request: NextRequest) {
   const isProtectedRoute = PROTECTED_ROUTES.some((route) =>
     pathname.startsWith(route),
   )
+  const isAdminRoute = ADMIN_ROUTES.some((route) =>
+    pathname.startsWith(route),
+  )
   const isAuthOnlyRoute = AUTH_ONLY_ROUTES.some((route) =>
     pathname.startsWith(route),
   )
+  const isPendingApprovalRoute = pathname.startsWith('/pending-approval')
 
-  // Unauthenticated user trying to access a protected route → send to login.
-  if (isProtectedRoute && !user) {
+  // Unauthenticated user trying to access any restricted route → send to login.
+  if ((isProtectedRoute || isAdminRoute || isPendingApprovalRoute) && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Authenticated user: fetch their approval and admin status from the DB.
+  // This is a fast primary-key lookup — one round trip per request.
+  let isApproved = false
+  let isAdmin = false
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('is_approved, is_admin')
+      .eq('id', user.id)
+      .single()
+
+    isApproved = profile?.is_approved ?? false
+    isAdmin = profile?.is_admin ?? false
+  }
+
+  // Authenticated but not yet approved: can only see /pending-approval.
+  if (user && !isApproved && !isAdmin && isProtectedRoute) {
+    return NextResponse.redirect(new URL('/pending-approval', request.url))
+  }
+
+  // Approved user visiting /pending-approval → no longer needed, send to dashboard.
+  if (user && isApproved && isPendingApprovalRoute) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Non-admin trying to access admin routes → send to dashboard.
+  if (isAdminRoute && user && !isAdmin) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   // Authenticated user trying to access auth pages → send to dashboard.

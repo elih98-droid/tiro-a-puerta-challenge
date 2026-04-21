@@ -22,7 +22,7 @@ CREATE TABLE users (
   email_verified BOOLEAN DEFAULT FALSE,
   over_18_confirmed BOOLEAN NOT NULL,
   marketing_emails_opt_in BOOLEAN DEFAULT FALSE,
-  auth_provider TEXT NOT NULL CHECK (auth_provider IN ('email', 'google', 'apple')),
+  auth_provider TEXT NOT NULL CHECK (auth_provider IN ('email', 'google')),
   is_deleted BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

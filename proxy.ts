@@ -70,14 +70,20 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith(route),
   )
   const isPendingApprovalRoute = pathname.startsWith('/pending-approval')
+  const isCompleteProfileRoute = pathname.startsWith('/complete-profile')
 
   // Unauthenticated user trying to access any restricted route → send to login.
-  if ((isProtectedRoute || isAdminRoute || isPendingApprovalRoute) && !user) {
+  if (
+    (isProtectedRoute || isAdminRoute || isPendingApprovalRoute || isCompleteProfileRoute) &&
+    !user
+  ) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Authenticated user: fetch their approval and admin status from the DB.
+  // Authenticated user: fetch their profile from the DB.
+  // profile === null means OAuth user who hasn't completed their profile yet.
   // This is a fast primary-key lookup — one round trip per request.
+  let profileExists = false
   let isApproved = false
   let isAdmin = false
 
@@ -88,18 +94,29 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
+    profileExists = profile !== null
     isApproved = profile?.is_approved ?? false
     isAdmin = profile?.is_admin ?? false
   }
 
-  // Authenticated but not yet approved: can only see /pending-approval.
-  if (user && !isApproved && !isAdmin && isProtectedRoute) {
+  // OAuth user with no profile yet: can only see /complete-profile.
+  if (user && !profileExists && !isCompleteProfileRoute) {
+    return NextResponse.redirect(new URL('/complete-profile', request.url))
+  }
+
+  // Profile complete but not yet approved: can only see /pending-approval.
+  if (user && profileExists && !isApproved && !isAdmin && isProtectedRoute) {
     return NextResponse.redirect(new URL('/pending-approval', request.url))
   }
 
   // Approved user visiting /pending-approval → no longer needed, send to dashboard.
   if (user && isApproved && isPendingApprovalRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // User who completed profile visiting /complete-profile → send to pending-approval.
+  if (user && profileExists && isCompleteProfileRoute) {
+    return NextResponse.redirect(new URL('/pending-approval', request.url))
   }
 
   // Non-admin trying to access admin routes → send to dashboard.

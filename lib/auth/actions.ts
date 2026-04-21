@@ -170,6 +170,65 @@ export async function signInWithOAuth(provider: 'google' | 'apple') {
 }
 
 // ──────────────────────────────────────────────
+// completeProfile
+// Called after an OAuth sign-in when public.users doesn't exist yet.
+// Collects username and age confirmation, then creates the rows in
+// public.users and public.user_status.
+// On success: redirects to /pending-approval (admin must approve first).
+// ──────────────────────────────────────────────
+
+export async function completeProfile(
+  prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const username = (formData.get('username') as string)?.trim()
+  const over18 = formData.get('over_18_confirmed') === 'on'
+  const marketingOptIn = formData.get('marketing_emails_opt_in') === 'on'
+
+  const usernameError = validateUsername(username)
+  if (usernameError) return { error: usernameError }
+
+  if (!over18) return { error: 'Debes confirmar que eres mayor de 18 años.' }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    redirect('/login')
+  }
+
+  const provider = user.app_metadata?.provider ?? 'email'
+
+  // Insert the profile row. If the username is already taken the unique
+  // constraint on public.users.username will raise an error.
+  const { error: insertError } = await supabase.from('users').insert({
+    id: user.id,
+    email: user.email!,
+    username,
+    email_verified: !!user.email_confirmed_at,
+    over_18_confirmed: true,
+    marketing_emails_opt_in: marketingOptIn,
+    auth_provider: provider,
+  })
+
+  if (insertError) {
+    if (insertError.message.includes('unique') || insertError.code === '23505') {
+      return { error: 'Ese nombre de usuario ya está en uso. Elige otro.' }
+    }
+    return { error: 'Error al guardar el perfil. Inténtalo de nuevo.' }
+  }
+
+  // Initialize tournament status.
+  await supabase.from('user_status').insert({ user_id: user.id })
+
+  redirect('/pending-approval')
+}
+
+// ──────────────────────────────────────────────
 // signOut
 // Ends the user's session and redirects to /login.
 // ──────────────────────────────────────────────

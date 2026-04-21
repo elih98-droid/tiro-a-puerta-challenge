@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 21 de abril de 2026
+**Última actualización:** 21 de abril de 2026 (tarde)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -20,6 +20,7 @@
 
 - [x] **Sistema completo de autenticación** — signup, login, logout, OAuth (solo Google), reset y update password. Trigger `handle_new_user` sincroniza `auth.users → public.users + user_status`. Trigger `sync_email_verified` mantiene `email_verified` actualizado.
 - [x] **Dashboard del usuario** (`/dashboard`) — muestra estado en el torneo (vivo/eliminado, días sobrevividos, goles acumulados) y pick del día actual. Layout con nav y logout.
+- [x] **Aprobación manual de cuentas** — nuevos usuarios quedan en `is_approved = false` hasta que el admin los aprueba desde `/admin/approvals`. Proxy bloquea acceso al juego si no están aprobados. Columnas `is_approved` e `is_admin` en `public.users`.
 
 ### Lo que NO está construido aún
 
@@ -76,17 +77,16 @@ Basado en `game-rules.md §9` y `database-schema.md §3.1`.
 - [x] **Trigger `sync_email_verified`**: aplicado en Supabase. Actualiza `public.users.email_verified` cuando el usuario confirma su email.
 - [ ] **Configurar Google OAuth en Supabase**: habilitar Google en Authentication → Providers del dashboard de Supabase. *(Requiere credenciales en Google Cloud Console.)*
 
-#### 2.5. Aprobación manual de cuentas (ambiente cerrado)
+#### 2.5. Aprobación manual de cuentas (ambiente cerrado) ✅
 El juego es cerrado: cualquiera puede registrarse pero necesita aprobación explícita del admin para jugar.
 
-- [ ] **Migración de DB**: agregar columna `is_approved BOOLEAN DEFAULT FALSE` a `public.users`. Actualizar trigger `handle_new_user` para que nuevos usuarios arranquen con `is_approved = false`. El admin se aprueba manualmente en Supabase la primera vez.
-- [ ] **Página `/pending-approval`**: pantalla informativa para usuarios autenticados pero no aprobados ("Tu cuenta está en revisión, pronto recibirás un email").
-- [ ] **Actualizar proxy**: si el usuario está autenticado pero `is_approved = false`, redirigir a `/pending-approval` en lugar de dejar entrar al juego.
-- [ ] **Página `/admin/approvals`** (protegida): lista de usuarios pendientes con nombre, email, fecha de registro. Botones de aprobar y rechazar. Solo accesible si `users.is_admin = true`.
-- [ ] **Columna `is_admin`**: agregar `is_admin BOOLEAN DEFAULT FALSE` a `public.users`. Marcarte a ti manualmente en Supabase.
-- [ ] **Server Action `approveUser` / `rejectUser`**: valida que quien llama es admin, actualiza `is_approved` en DB.
-- [ ] *(Opcional)* **Email al admin** cuando alguien se registra (vía Resend). *(Se puede diferir hasta que se configure Resend en tarea 9.)*
-- [ ] *(Opcional)* **Email al usuario** cuando es aprobado o rechazado. *(Ídem, diferir a tarea 9.)*
+- [x] **Migración de DB**: columnas `is_approved BOOLEAN DEFAULT FALSE` e `is_admin BOOLEAN DEFAULT FALSE` en `public.users`. Índice para la query de pendientes. Aplicado en Supabase.
+- [x] **Página `/pending-approval`**: pantalla informativa para usuarios autenticados pero no aprobados.
+- [x] **Actualizar proxy**: si el usuario está autenticado pero `is_approved = false`, redirige a `/pending-approval`.
+- [x] **Página `/admin/approvals`** (protegida): lista de usuarios pendientes con username, email y fecha de registro. Botones de aprobar y rechazar. Solo accesible si `users.is_admin = true`.
+- [x] **Server Actions `approveUser` / `rejectUser`**: validan que quien llama es admin. Aprobar setea `is_approved = true`; rechazar elimina el usuario de `auth.users` (cascada a `public.users`).
+- [ ] *(Opcional)* **Email al admin** cuando alguien se registra (vía Resend). *(Diferido a tarea 9.)*
+- [ ] *(Opcional)* **Email al usuario** cuando es aprobado o rechazado. *(Diferido a tarea 9.)*
 
 #### 3. Precarga de datos del torneo
 - [ ] Decidir proveedor de datos deportivos (ver `game-rules.md §13.3`). ⚠️ Decisión pendiente del usuario.
@@ -202,7 +202,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Documentación base | ✅ Completo |
 | Schema de base de datos | ✅ Aplicado en Supabase / versionado en repo |
 | Autenticación | ✅ Completo |
-| Aprobación manual de cuentas | ⏳ Pendiente |
+| Aprobación manual de cuentas | ✅ Completo |
 | Dashboard del usuario | ✅ Completo (básico) |
 | Precarga de datos del torneo | ⏳ Pendiente (depende de decisión de proveedor) |
 | Mecánica de picks | ⏳ Pendiente |

@@ -62,7 +62,7 @@ export default async function DashboardPage() {
           profile.email_verified (from public.users) because the auth value
           is always up to date, whereas the DB field requires a separate trigger
           to stay in sync. */}
-      {!user.email_confirmed_at && (
+      {!user!.email_confirmed_at && (
         <p>
           ⚠️ Tu email aún no está verificado. Revisa tu bandeja de entrada y
           confirma tu cuenta para poder hacer picks.

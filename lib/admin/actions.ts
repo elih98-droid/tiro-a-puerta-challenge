@@ -39,9 +39,11 @@ async function requireAdmin(): Promise<string> {
 export async function approveUser(userId: string): Promise<void> {
   await requireAdmin()
 
-  const supabase = await createClient()
+  // Use the admin client to bypass RLS — the regular client can only
+  // update the current user's own row.
+  const adminClient = createAdminClient()
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('users')
     .update({ is_approved: true })
     .eq('id', userId)

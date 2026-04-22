@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -222,8 +223,10 @@ export async function completeProfile(
     return { error: 'Error al guardar el perfil. Inténtalo de nuevo.' }
   }
 
-  // Initialize tournament status.
-  await supabase.from('user_status').insert({ user_id: user.id })
+  // Initialize tournament status using the admin client — RLS on user_status
+  // only allows inserts from the service role (system operations).
+  const adminClient = createAdminClient()
+  await adminClient.from('user_status').insert({ user_id: user.id })
 
   redirect('/pending-approval')
 }

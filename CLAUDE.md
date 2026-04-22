@@ -190,15 +190,12 @@ Estas reglas son fundamentales. Claude Code debe respetarlas sin excepción:
 El proyecto tiene decisiones abiertas que todavía no están resueltas. Si Claude Code necesita que estas decisiones estén tomadas para avanzar, debe preguntar al usuario:
 
 - **Modelo económico y premios.** Si hay costo de entrada, qué tipo de premio, estructura legal (SEGOB, persona física/moral, T&C, aviso de privacidad).
-- **Proveedor de datos deportivos.** Sportradar, Opta, API-Football, StatsPerform. Esta decisión afecta la capa de integración con fuente oficial.
 - **Criterios de desempate secundarios.** Los actuales en `game-rules.md` §5.3 pueden refinarse.
 - **Diseño visual y branding.** Logo, paleta de colores, tipografía. Aún no definidos.
 
 ---
 
 ## Comandos útiles
-
-*(Esta sección se completará conforme el proyecto avance y los comandos se definan.)*
 
 ```bash
 # Desarrollo local
@@ -210,9 +207,21 @@ npm run test
 # Build de producción
 npm run build
 
-# Migraciones de Supabase (pendiente definir flujo exacto)
-# supabase db push / supabase migration new
+# Seeds de Premier League (correr en este orden)
+npm run seed:pl:teams      # 20 equipos → tabla teams
+npm run seed:pl:players    # planteles → tabla players (requiere teams)
+npm run seed:pl:matches    # fixture → tablas match_days + matches (requiere teams)
+
+# Invocar el worker de sync manualmente (con npm run dev activo)
+curl http://localhost:3000/api/cron/sync-live-matches
 ```
+
+### Notas sobre los scripts de seed
+
+- Los seeds de PL usan `group_letter = 'X'` como placeholder (campo obligatorio para el Mundial).
+- `seed-pl-matches.ts` tiene una constante `COMPETITION_START_DATE` que filtra desde qué fecha seedear. Actualmente `'2026-04-22'` (inicio de pruebas con PL).
+- El script borra y re-crea `pick_history`, `user_picks`, `player_match_stats`, `matches` y `match_days` antes de insertar. **No correr en producción con datos reales.**
+- Scripts utilitarios de prueba en `scripts/` con prefijo `_` o nombre descriptivo (`insert-test-picks.ts`, `_query-db.ts`). Son desechables, no se usan en producción.
 
 ---
 
@@ -245,6 +254,7 @@ Al abrir el proyecto, Claude Code idealmente:
 
 - **v1.0 (abril 2026):** versión inicial del CLAUDE.md. Stack y convenciones definidos. Proyecto en fase de arranque.
 - **v1.1 (abril 2026):** agregado AGENTS.md a la lista de documentos de referencia; añadida sección sobre React Compiler (activado en setup inicial); pequeño ajuste a la estructura de carpetas.
+- **v1.2 (abril 2026):** integración API-Football completada (cliente, tipos, seeds PL, worker de sync); comandos útiles actualizados; decisión de proveedor de datos removida de pendientes (ya resuelta: API-Football); nota importante sobre zona horaria CDMX.
 
 ---
 

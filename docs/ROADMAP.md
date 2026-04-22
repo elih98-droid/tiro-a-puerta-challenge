@@ -75,7 +75,7 @@ Basado en `game-rules.md §9` y `database-schema.md §3.1`.
 - [ ] **Cerrar sesión** (logout): botón/acción visible en la app (se agrega en el dashboard).
 - [ ] **Cierre de registros**: bloquear nuevos signups a partir del 11 de junio de 2026, 12:55 pm CDMX (`game-rules.md §9.5`). *(Se implementa cuando se construya la validación de fechas del torneo.)*
 - [x] **Trigger `sync_email_verified`**: aplicado en Supabase. Actualiza `public.users.email_verified` cuando el usuario confirma su email.
-- [ ] **Configurar Google OAuth en Supabase**: habilitar Google en Authentication → Providers del dashboard de Supabase. *(Requiere credenciales en Google Cloud Console.)*
+- [x] **Configurar Google OAuth en Supabase**: credenciales creadas en Google Cloud Console, habilitado en Supabase Authentication → Providers. Flujo `/complete-profile` implementado para recoger username y edad después del OAuth.
 
 #### 2.5. Aprobación manual de cuentas (ambiente cerrado) ✅
 El juego es cerrado: cualquiera puede registrarse pero necesita aprobación explícita del admin para jugar.

@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 21 de abril de 2026 (tarde)
+**Última actualización:** 21 de abril de 2026 (noche)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -88,8 +88,21 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [ ] *(Opcional)* **Email al admin** cuando alguien se registra (vía Resend). *(Diferido a tarea 9.)*
 - [ ] *(Opcional)* **Email al usuario** cuando es aprobado o rechazado. *(Diferido a tarea 9.)*
 
-#### 3. Precarga de datos del torneo
-- [ ] Decidir proveedor de datos deportivos (ver `game-rules.md §13.3`). ⚠️ Decisión pendiente del usuario.
+#### 3. Integración con API-Football y pruebas con Premier League
+**Proveedor decidido: API-Football** (api-football.com). Plan PRO contratado (3 meses, 7,500 requests/día). API key en `.env.local`. Endpoint clave: `fixtures/players` — devuelve `shots.on` por jugador por partido, actualizado cada minuto.
+
+**Estrategia:** probar el sistema completo con partidos en vivo de Premier League (temporada 2025/26) antes del Mundial. Mismas condiciones reales: partidos en vivo, datos actualizándose cada minuto.
+
+- [ ] **Cliente de API-Football** (`lib/api-football/client.ts`): wrapper tipado sobre los endpoints que usaremos.
+- [ ] **Script de seed: equipos de Premier League** (`scripts/seed-premier-league.ts`): poblar `teams` con los 20 equipos via API.
+- [ ] **Script de seed: jugadores de Premier League**: poblar `players` con los planteles actuales via API.
+- [ ] **Script de seed: partidos de Premier League**: poblar `match_days` y `matches` con el fixture de la temporada 2025/26.
+- [ ] **Worker de sincronización en vivo** (`app/api/cron/sync-live-matches/route.ts`): llama a `fixtures/players` cada ~60 segundos para partidos en progreso, actualiza `player_match_stats`.
+- [ ] **Prueba end-to-end con Premier League**: hacer picks reales, verificar que el worker actualiza estadísticas y que la evaluación funciona correctamente.
+- [ ] *(Mundial)* Script de seed equivalente para los 48 equipos, ~1,150 jugadores y 104 partidos del Mundial 2026.
+
+#### 3b. Precarga de datos del Mundial 2026
+*(Se ejecuta ~1 semana antes del 11 de junio)*
 - [ ] Script de seed para los 48 equipos (`teams`).
 - [ ] Script de seed para los días de partidos (`match_days`).
 - [ ] Script de seed para los 104 partidos de fase de grupos (`matches`).
@@ -185,7 +198,7 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 
 Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas afectadas:
 
-- [ ] **Proveedor de datos deportivos** (afecta tareas 3 y 7) — Sportradar, Opta, API-Football, StatsPerform.
+- [x] **Proveedor de datos deportivos** — **API-Football** (api-football.com). Plan PRO, 3 meses. API key configurada en `.env.local`.
 - [ ] **Modelo económico y premios** (puede afectar flujo de registro y T&C).
 - [ ] **Estructura legal** — Persona física o moral, T&C, aviso de privacidad.
 - [ ] **Ventana exacta del recordatorio de pick** (`game-rules.md §13.5`).
@@ -204,7 +217,8 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Autenticación | ✅ Completo |
 | Aprobación manual de cuentas | ✅ Completo |
 | Dashboard del usuario | ✅ Completo (básico) |
-| Precarga de datos del torneo | ⏳ Pendiente (depende de decisión de proveedor) |
+| Integración API-Football + pruebas Premier League | 🔄 En progreso |
+| Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
 | Mecánica de picks | ⏳ Pendiente |
 | Leaderboard | ⏳ Pendiente |
 | Evaluación automática (cron) | ⏳ Pendiente |

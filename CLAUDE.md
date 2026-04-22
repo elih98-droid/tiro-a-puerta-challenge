@@ -255,6 +255,7 @@ Al abrir el proyecto, Claude Code idealmente:
 - **v1.0 (abril 2026):** versión inicial del CLAUDE.md. Stack y convenciones definidos. Proyecto en fase de arranque.
 - **v1.1 (abril 2026):** agregado AGENTS.md a la lista de documentos de referencia; añadida sección sobre React Compiler (activado en setup inicial); pequeño ajuste a la estructura de carpetas.
 - **v1.2 (abril 2026):** integración API-Football completada (cliente, tipos, seeds PL, worker de sync); comandos útiles actualizados; decisión de proveedor de datos removida de pendientes (ya resuelta: API-Football); nota importante sobre zona horaria CDMX.
+- **v1.3 (abril 2026):** prueba en vivo con Premier League superada el 22 de abril — worker sincroniza `player_match_stats` en tiempo real (Haaland: 1 tiro + 1 gol confirmados en DB). Pipeline API-Football → Supabase 100% funcional.
 
 ---
 

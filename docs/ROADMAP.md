@@ -102,7 +102,7 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [x] **Script de seed: partidos de Premier League** (`scripts/seed-pl-matches.ts`): 14 días y 50 partidos (22 abr – 24 may 2026) en tablas `match_days` y `matches`. Corrido exitosamente.
 - [x] **Worker de sincronización en vivo** (`app/api/cron/sync-live-matches/route.ts`): llama a `fixtures/players` cada ~60s para partidos activos, actualiza `player_match_stats` y `matches`. Configurado en `vercel.json`.
 - [x] **Script de picks de prueba** (`scripts/insert-test-picks.ts`): picks del día 1 (22 abr): elias_test → Haaland (Man City FWD), El_Conde → Petrović (Bournemouth GK).
-- [ ] **Prueba end-to-end**: verificar que el worker actualiza `player_match_stats` con datos reales durante los partidos del 22 de abril (13:00 CDMX). Pendiente.
+- [x] **Prueba end-to-end**: worker verificado en vivo el 22 de abril (PL: Bournemouth vs Leeds + partido con Man City). `player_match_stats` se actualiza correctamente con `shots_on_target`, `goals`, `minutes_played`. Haaland: 1 tiro a puerta + 1 gol registrados en tiempo real.
 - [ ] *(Mundial)* Scripts de seed equivalentes para los 48 equipos, ~1,150 jugadores y 104 partidos del Mundial 2026.
 
 #### 3b. Precarga de datos del Mundial 2026
@@ -221,7 +221,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Autenticación | ✅ Completo |
 | Aprobación manual de cuentas | ✅ Completo |
 | Dashboard del usuario | ✅ Completo (básico) |
-| Integración API-Football + pruebas Premier League | 🔄 Worker listo, prueba en vivo pendiente (22 abr) |
+| Integración API-Football + pruebas Premier League | ✅ Completo — prueba en vivo superada (22 abr) |
 | Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
 | Mecánica de picks | ⏳ Pendiente |
 | Leaderboard | ⏳ Pendiente |

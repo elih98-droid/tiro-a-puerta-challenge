@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 22 de abril de 2026 (noche)
+**Última actualización:** 22 de abril de 2026 (noche — tarea 5 completa)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -121,14 +121,17 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [x] Layout con nav (username) y botón de logout.
 - [ ] Mostrar jugadores quemados del usuario. *(Se agrega cuando haya picks.)*
 
-#### 5. Sistema de picks
-- [ ] **Pool de jugadores elegibles**: llamar a `get_available_players()` para mostrar opciones del día.
-- [ ] **Selector de pick**: UI para elegir jugador (con filtros por equipo, posición).
-- [ ] **Crear/cambiar pick**: Server Action que valida deadline y llama a DB.
-- [ ] **Deadline en tiempo real**: mostrar countdown al deadline; bloquear UI cuando vence.
-- [ ] **Visualización del pick activo**: confirmar qué jugador eligió el usuario hoy.
-- [ ] Validar que el pick se hace antes del deadline del partido del jugador elegido (`game-rules.md §3.2`).
-- [ ] Validar que el jugador no fue elegido en días anteriores (`game-rules.md §3.4`).
+#### 5. Sistema de picks ✅
+- [x] **Pool de jugadores elegibles**: página `/pick` muestra todos los jugadores del día agrupados por partido.
+- [x] **Selector de pick**: tarjetas de partido desplegables con filtro por posición (GK/DEF/MID/FWD). Panel de confirmación sticky al fondo (mobile-friendly).
+- [x] **Crear/cambiar pick**: Server Actions `submitPick` (upsert con validaciones) y `removePick`. Upsert con `onConflict: 'user_id,match_day_id'` para cambio de pick en el día.
+- [x] **Deadline en tiempo real**: componente `DeadlineCountdown` muestra cuenta regresiva; tarjeta se cierra automáticamente cuando deadline vence.
+- [x] **Visualización del pick activo**: tarjeta "Tu pick de hoy" con nombre, posición y estado (bloqueado / modificable). Pick resaltado en verde (✓) dentro de la lista.
+- [x] Validar que el pick se hace antes del deadline del partido del jugador elegido (`game-rules.md §3.2`).
+- [x] Validar que el jugador no fue elegido en días anteriores (`game-rules.md §3.4`). Jugadores quemados aparecen con 🚫 y están deshabilitados.
+- [x] **Picks por adelantado**: navegación por día (`?date=YYYY-MM-DD`), hasta 3 días hacia adelante y hacia atrás. Pre-picks bloquean al jugador en todos los demás días inmediatamente.
+- [x] **RLS fixes**: migración `20260422000001` (SECURITY DEFINER en `log_pick_history`), migración `20260422000002` (política FOR DELETE explícita en `user_picks`).
+- [x] **Fix is_alive**: `evaluate-picks` no infla `days_survived`/`total_goals_accumulated` de usuarios eliminados con pre-picks futuros (`.eq("is_alive", true)`).
 
 #### 6. Leaderboard
 - [ ] Página pública de leaderboard (`/leaderboard`).

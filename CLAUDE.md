@@ -257,6 +257,7 @@ Al abrir el proyecto, Claude Code idealmente:
 - **v1.2 (abril 2026):** integración API-Football completada (cliente, tipos, seeds PL, worker de sync); comandos útiles actualizados; decisión de proveedor de datos removida de pendientes (ya resuelta: API-Football); nota importante sobre zona horaria CDMX.
 - **v1.3 (abril 2026):** prueba en vivo con Premier League superada el 22 de abril — worker sincroniza `player_match_stats` en tiempo real (Haaland: 1 tiro + 1 gol confirmados en DB). Pipeline API-Football → Supabase 100% funcional.
 - **v1.4 (abril 2026):** loop completo del juego verificado en vivo. Cron `evaluate-picks` implementado: lock de picks, evaluación de resultados (survived/eliminated/void_*), actualización de `user_status`. Fix al trigger `validate_pick_timing`. elias_test sobrevivió, El_Conde eliminado — prueba 100% exitosa.
+- **v1.5 (abril 2026):** sistema de picks completo (tarea 5). Página `/pick` con navegación por día, picks por adelantado (hasta 3 días), tarjetas de partido desplegables, filtro por posición, countdown de deadline, panel de confirmación sticky (mobile-first), jugadores quemados con 🚫. Dos RLS fixes (SECURITY DEFINER en `log_pick_history`, FOR DELETE explícita en `user_picks`). Fix en `evaluate-picks`: no infla stats de usuarios eliminados con pre-picks futuros.
 
 ---
 

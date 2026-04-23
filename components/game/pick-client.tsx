@@ -186,8 +186,12 @@ export function PickClient({
     )
   }
 
+  // When a confirmation panel is visible we add bottom padding so it doesn't
+  // cover the last match card on mobile.
+  const hasConfirmPanel = !!(selectedPlayer && selectedPlayerTeam && selectedDeadline)
+
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${hasConfirmPanel ? 'pb-36' : ''}`}>
 
       {/* ── Current pick summary ─────────────────────────────────────────── */}
       {currentPick && (
@@ -236,47 +240,6 @@ export function PickClient({
         </div>
       )}
 
-      {/* ── Confirmation panel (appears when user clicks a player) ───────── */}
-      {selectedPlayer && selectedPlayerTeam && selectedDeadline && (
-        <div className="rounded-lg border-2 border-blue-400 bg-blue-50 p-4">
-          <p className="text-sm font-semibold text-blue-700 mb-2">Confirmar pick</p>
-          <p className="text-base font-bold text-gray-900">
-            {selectedPlayer.display_name}
-            <span className="ml-2 text-sm font-normal text-gray-500">
-              ({selectedPlayer.position}) — {selectedPlayerTeam.name}
-            </span>
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Deadline:{' '}
-            {new Date(selectedDeadline).toLocaleTimeString('es-MX', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
-
-          {actionError && (
-            <p className="mt-2 text-sm text-red-600 font-medium">{actionError}</p>
-          )}
-
-          <div className="flex gap-3 mt-3">
-            <button
-              onClick={handleConfirm}
-              disabled={isPending}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isPending ? 'Guardando...' : 'Confirmar'}
-            </button>
-            <button
-              onClick={handleCancelSelection}
-              disabled={isPending}
-              className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ── Position filter ──────────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
         {POSITION_FILTERS.map(filter => (
@@ -310,6 +273,54 @@ export function PickClient({
           />
         ))}
       </div>
+
+      {/* ── Sticky confirmation panel (fixed at bottom, appears on player click) ── */}
+      {hasConfirmPanel && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t-2 border-blue-400 bg-white shadow-2xl">
+          <div className="mx-auto max-w-2xl px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 mb-1">
+              Confirmar pick
+            </p>
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-base font-bold text-gray-900 truncate">
+                  {selectedPlayer!.display_name}
+                  <span className="ml-2 text-sm font-normal text-gray-500">
+                    ({selectedPlayer!.position}) — {selectedPlayerTeam!.name}
+                  </span>
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Deadline:{' '}
+                  {new Date(selectedDeadline!).toLocaleTimeString('es-MX', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+                {actionError && (
+                  <p className="mt-1 text-sm text-red-600 font-medium">{actionError}</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 shrink-0 mt-0.5">
+                <button
+                  onClick={handleCancelSelection}
+                  disabled={isPending}
+                  className="px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={isPending}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? 'Guardando...' : 'Confirmar pick'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

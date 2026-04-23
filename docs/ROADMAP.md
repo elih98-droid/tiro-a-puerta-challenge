@@ -142,7 +142,7 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 #### 6.5. Mis picks (`/my-picks`)
 Sección privada donde cada participante puede ver un resumen de todos sus picks por día — para tener claridad de qué jugadores ya usó y cuáles aún tiene disponibles.
 - [ ] Página `/my-picks` (o sección dentro del dashboard): lista de días jugados con el jugador elegido, resultado del día (sobrevivió / eliminado / anulado / pendiente) y tiro a puerta/goles si aplica.
-- [ ] Indicar visualmente jugadores "quemados" (ya usados) vs. disponibles.
+- [ ] Indicar visualmente qué jugadores ya están quemados (usados en días anteriores).
 - [ ] Ordenar por día (más reciente primero).
 - [ ] Mostrar picks futuros/planeados también (pre-picks pendientes de evaluación).
 

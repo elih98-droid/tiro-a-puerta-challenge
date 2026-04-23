@@ -272,7 +272,10 @@ async function applyResult(
         total_goals_accumulated: (currentStatus.total_goals_accumulated ?? 0) + goalsToAdd,
         updated_at: new Date().toISOString(),
       })
-      .eq("user_id", evaluated.userId);
+      .eq("user_id", evaluated.userId)
+      // Safety: never update stats for a user who is already eliminated.
+      // This handles pre-picks for future days when the user lost on an earlier day.
+      .eq("is_alive", true);
 
     if (statusUpdateError) {
       throw new Error(`Failed to update user_status for ${evaluated.userId}: ${statusUpdateError.message}`);

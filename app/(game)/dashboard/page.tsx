@@ -129,7 +129,9 @@ export default async function DashboardPage() {
         ) : (
           <div>
             <p>Aún no has hecho tu pick de hoy.</p>
-            <a href="/pick">Elegir jugador</a>
+            <a href="/pick" className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700">
+              Elegir jugador →
+            </a>
           </div>
         )}
       </section>

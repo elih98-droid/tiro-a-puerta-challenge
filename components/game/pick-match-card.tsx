@@ -271,7 +271,7 @@ function PlayerButton({
   } else if (isSelected) {
     buttonClass += 'bg-blue-100 border border-blue-400 text-blue-800 font-medium'
   } else if (isBurned) {
-    buttonClass += 'bg-gray-50 text-gray-400 cursor-not-allowed line-through'
+    buttonClass += 'bg-gray-50 text-red-400 cursor-not-allowed'
   } else if (isClosed) {
     buttonClass += 'bg-gray-50 text-gray-400 cursor-not-allowed'
   } else {
@@ -290,7 +290,7 @@ function PlayerButton({
       </span>
       <span className="truncate">{player.display_name}</span>
       {isCurrentPick && <span className="ml-auto text-green-600">✓</span>}
-      {isBurned && <span className="ml-auto text-xs text-gray-400">🔥</span>}
+      {isBurned && <span className="ml-auto text-xs">🚫</span>}
     </button>
   )
 }

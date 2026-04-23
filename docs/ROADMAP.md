@@ -139,6 +139,13 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [ ] Ordenar: primero por vivos/eliminados, luego por goles acumulados (desempate §5.1).
 - [ ] Mostrar picks de otros usuarios (solo después del deadline, `game-rules.md §10.1`).
 
+#### 6.5. Mis picks (`/my-picks`)
+Sección privada donde cada participante puede ver un resumen de todos sus picks por día — para tener claridad de qué jugadores ya usó y cuáles aún tiene disponibles.
+- [ ] Página `/my-picks` (o sección dentro del dashboard): lista de días jugados con el jugador elegido, resultado del día (sobrevivió / eliminado / anulado / pendiente) y tiro a puerta/goles si aplica.
+- [ ] Indicar visualmente jugadores "quemados" (ya usados) vs. disponibles.
+- [ ] Ordenar por día (más reciente primero).
+- [ ] Mostrar picks futuros/planeados también (pre-picks pendientes de evaluación).
+
 #### 7. Evaluación automática de picks (cron job) ✅
 - [x] **Sincronización con API deportiva**: worker/cron que actualiza `matches.status` y `player_match_stats` cada ~60 segundos durante partidos en vivo (`sync-live-matches`).
 - [x] **Lock de picks**: `evaluate-picks` marca `user_picks.is_locked = TRUE` al vencer el `effective_deadline`.

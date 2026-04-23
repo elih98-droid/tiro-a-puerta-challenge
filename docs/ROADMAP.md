@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 22 de abril de 2026 (madrugada)
+**Última actualización:** 22 de abril de 2026 (noche)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -24,7 +24,7 @@
 
 ### Lo que NO está construido aún
 
-Picks, leaderboard, emails, cron jobs, precarga de datos del torneo, etc. (detallado en las tareas de abajo).
+Picks, leaderboard, emails, precarga de datos del torneo, etc. (detallado en las tareas de abajo).
 
 ---
 
@@ -136,11 +136,13 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [ ] Ordenar: primero por vivos/eliminados, luego por goles acumulados (desempate §5.1).
 - [ ] Mostrar picks de otros usuarios (solo después del deadline, `game-rules.md §10.1`).
 
-#### 7. Evaluación automática de picks (cron job)
-- [ ] **Sincronización con API deportiva**: worker/cron que actualiza `matches.status` y `player_match_stats` cada ~60 segundos durante partidos en vivo.
-- [ ] **Lock de picks**: cron que marca `user_picks.is_locked = TRUE` al llegar al deadline de cada partido.
-- [ ] **Evaluación post-partido**: cron que ejecuta `process_match_day_results()` 24 horas después del último partido del día.
-- [ ] Manejo de casos borde: partido suspendido, cancelado, jugador que no jugó (`game-rules.md §7`).
+#### 7. Evaluación automática de picks (cron job) ✅
+- [x] **Sincronización con API deportiva**: worker/cron que actualiza `matches.status` y `player_match_stats` cada ~60 segundos durante partidos en vivo (`sync-live-matches`).
+- [x] **Lock de picks**: `evaluate-picks` marca `user_picks.is_locked = TRUE` al vencer el `effective_deadline`.
+- [x] **Evaluación post-partido**: `evaluate-picks` determina `survived / eliminated / void_*`, actualiza `user_picks.result` y `user_status`. Corre cada minuto, idempotente.
+- [x] Manejo de casos borde: partido cancelado (`void_cancelled_match`), jugador que no jugó (`void_did_not_play`), usuario sin pick (`no_pick`). (`game-rules.md §7`)
+- [x] **Fix trigger `validate_pick_timing`**: permite updates del sistema después del deadline (migración `20260422000000`).
+- [ ] *(Futuro)* Respetar ventana de 24h antes de marcar `is_processed = TRUE` (`game-rules.md §6.5`). Actualmente evalúa en cuanto todos los partidos del día están `finished`.
 
 ---
 
@@ -222,10 +224,11 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Aprobación manual de cuentas | ✅ Completo |
 | Dashboard del usuario | ✅ Completo (básico) |
 | Integración API-Football + pruebas Premier League | ✅ Completo — prueba en vivo superada (22 abr) |
+| Evaluación automática de picks (cron) | ✅ Completo — loop end-to-end verificado (22 abr) |
 | Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
 | Mecánica de picks | ⏳ Pendiente |
 | Leaderboard | ⏳ Pendiente |
-| Evaluación automática (cron) | ⏳ Pendiente |
+| Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ⏳ Pendiente |
 | Tests críticos | ⏳ Pendiente |
 | Monitoreo y producción | ⏳ Pendiente |

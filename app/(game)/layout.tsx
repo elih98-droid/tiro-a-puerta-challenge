@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { LogoutButton } from '@/components/layout/logout-button'
+import Link from 'next/link'
 
 /**
  * Layout for all game pages (/dashboard, /pick, /leaderboard, /profile).
@@ -26,6 +27,8 @@ export default async function GameLayout({
     <div>
       <nav>
         <span>Tiro a Puerta 2026</span>
+        <Link href="/pick">Pick</Link>
+        <Link href="/my-picks">Mis picks</Link>
         <span>{profile?.username ?? user!.email}</span>
         <LogoutButton />
       </nav>

@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 22 de abril de 2026 (noche — tarea 5 completa)
+**Última actualización:** 23 de abril de 2026 (tarea 6.5 completa)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -139,12 +139,13 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [ ] Ordenar: primero por vivos/eliminados, luego por goles acumulados (desempate §5.1).
 - [ ] Mostrar picks de otros usuarios (solo después del deadline, `game-rules.md §10.1`).
 
-#### 6.5. Mis picks (`/my-picks`)
+#### 6.5. Mis picks (`/my-picks`) ✅
 Sección privada donde cada participante puede ver un resumen de todos sus picks por día — para tener claridad de qué jugadores ya usó y cuáles aún tiene disponibles.
-- [ ] Página `/my-picks` (o sección dentro del dashboard): lista de días jugados con el jugador elegido, resultado del día (sobrevivió / eliminado / anulado / pendiente) y tiro a puerta/goles si aplica.
-- [ ] Indicar visualmente qué jugadores ya están quemados (usados en días anteriores).
-- [ ] Ordenar por día (más reciente primero).
-- [ ] Mostrar picks futuros/planeados también (pre-picks pendientes de evaluación).
+- [x] Página `/my-picks`: lista de días jugados con el jugador elegido, resultado del día (sobrevivió / eliminado / anulado / pendiente) y tiro a puerta/goles si aplica.
+- [x] Indicar visualmente qué jugadores ya están quemados — contador al tope ("X jugadores usados") y badge por cada entrada.
+- [x] Ordenar por día (más reciente primero).
+- [x] Mostrar picks futuros/planeados también (pre-picks con badge "Pendiente").
+- [x] Fix: navegación de días en `/pick` ahora funciona aunque hoy no tenga partidos (always-run prev/next query + PickDayNav en el empty state).
 
 #### 7. Evaluación automática de picks (cron job) ✅
 - [x] **Sincronización con API deportiva**: worker/cron que actualiza `matches.status` y `player_match_stats` cada ~60 segundos durante partidos en vivo (`sync-live-matches`).
@@ -236,7 +237,8 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Integración API-Football + pruebas Premier League | ✅ Completo — prueba en vivo superada (22 abr) |
 | Evaluación automática de picks (cron) | ✅ Completo — loop end-to-end verificado (22 abr) |
 | Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
-| Mecánica de picks | ⏳ Pendiente |
+| Mecánica de picks | ✅ Completo |
+| Mis picks (/my-picks) | ✅ Completo |
 | Leaderboard | ⏳ Pendiente |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ⏳ Pendiente |

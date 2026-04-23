@@ -8,66 +8,47 @@ const supabase = createClient(
 );
 
 async function main() {
-  // 1. Check live/in-play matches
-  const { data: liveMatches, error: liveErr } = await supabase
-    .from("matches")
-    .select("id, home_team_id, away_team_id, status, match_day_id, api_external_id")
-    .in("status", ["live", "scheduled", "finished"]);
-  console.log("MATCHES (live/scheduled/finished):", JSON.stringify(liveMatches, null, 2));
-  if (liveErr) console.error("MATCHES ERROR:", liveErr.message);
-
-  // 2. Check player_match_stats for our two test picks: Haaland and Petrović
-  const { data: stats, error: statsErr } = await supabase
-    .from("player_match_stats")
-    .select(`
-      id,
-      shots_on_target,
-      goals,
-      minutes_played,
-      is_final,
-      last_api_sync_at,
-      players ( display_name, position ),
-      matches ( status, api_external_id )
-    `)
-    .ilike("players.display_name", "%Haaland%")
-    .order("last_api_sync_at", { ascending: false });
-
-  // Also fetch Petrović separately
-  const { data: petrovicStats, error: petrovicErr } = await supabase
-    .from("player_match_stats")
-    .select(`
-      id,
-      shots_on_target,
-      goals,
-      minutes_played,
-      is_final,
-      last_api_sync_at,
-      players ( display_name, position ),
-      matches ( status, api_external_id )
-    `)
-    .ilike("players.display_name", "%Petrov%")
-    .order("last_api_sync_at", { ascending: false });
-
-  console.log("HAALAND STATS:", JSON.stringify(stats, null, 2));
-  if (statsErr) console.error("HAALAND STATS ERROR:", statsErr.message);
-  console.log("PETROVIĆ STATS:", JSON.stringify(petrovicStats, null, 2));
-  if (petrovicErr) console.error("PETROVIĆ STATS ERROR:", petrovicErr.message);
-
-  // 3. Check user_picks for today
+  // 1. User picks — resultado final
   const { data: picks, error: picksErr } = await supabase
     .from("user_picks")
     .select(`
       id,
       is_locked,
       result,
+      shots_on_target_count,
+      goals_scored,
+      processed_at,
       users ( username ),
-      players ( display_name ),
+      players ( display_name, position ),
       match_days ( match_date )
     `)
     .order("created_at", { ascending: false })
     .limit(10);
   console.log("USER PICKS:", JSON.stringify(picks, null, 2));
   if (picksErr) console.error("PICKS ERROR:", picksErr.message);
+
+  // 2. User status — supervivencia
+  const { data: statuses, error: statusErr } = await supabase
+    .from("user_status")
+    .select(`
+      is_alive,
+      elimination_reason,
+      eliminated_on_match_day_id,
+      days_survived,
+      total_goals_accumulated,
+      users ( username )
+    `);
+  console.log("USER STATUS:", JSON.stringify(statuses, null, 2));
+  if (statusErr) console.error("STATUS ERROR:", statusErr.message);
+
+  // 3. Match day — procesado?
+  const { data: matchDay, error: dayErr } = await supabase
+    .from("match_days")
+    .select("id, match_date, is_processed")
+    .eq("day_number", 1)
+    .single();
+  console.log("MATCH DAY 1:", JSON.stringify(matchDay, null, 2));
+  if (dayErr) console.error("MATCH DAY ERROR:", dayErr.message);
 }
 
 main();

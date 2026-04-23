@@ -51,7 +51,7 @@ export function PickDayNav({
       <div className="text-center">
         <p className="font-semibold text-gray-900 capitalize">{dateLabel}</p>
         <p className="text-xs text-gray-400">
-          Día {dayNumber}
+          {dayNumber > 0 && `Día ${dayNumber}`}
           {isToday && (
             <span className="ml-2 bg-blue-100 text-blue-700 text-xs font-semibold px-1.5 py-0.5 rounded">
               Hoy

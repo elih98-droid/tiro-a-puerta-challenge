@@ -151,15 +151,21 @@ export async function removePick(matchDayId: number): Promise<{ error?: string }
     return { error: 'El deadline ya pasó — este pick no puede quitarse.' }
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError, count } = await supabase
     .from('user_picks')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('user_id', user.id)
     .eq('match_day_id', matchDayId)
 
   if (deleteError) {
-    console.error('removePick error:', deleteError.message)
+    console.error('removePick delete error:', deleteError.message)
     return { error: 'Error al quitar el pick. Intenta de nuevo.' }
+  }
+
+  // count = 0 means RLS blocked the delete silently (no row matched)
+  if (count === 0) {
+    console.error('removePick: delete ran but affected 0 rows (RLS block?)')
+    return { error: 'No se pudo quitar el pick. Intenta de nuevo.' }
   }
 
   revalidatePath('/pick')

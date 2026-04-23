@@ -16,6 +16,7 @@
  */
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { submitPick, removePick } from '@/app/(game)/pick/actions'
 import { PickMatchCard, type MatchData, type Player } from './pick-match-card'
 
@@ -87,6 +88,7 @@ export function PickClient({
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState(false)
 
+  const router = useRouter()
   const burnedSet = new Set(burnedPlayerIds)
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -119,8 +121,9 @@ export function PickClient({
       const result = await removePick(matchDay.id)
       if (result.error) {
         setActionError(result.error)
+      } else {
+        router.refresh()
       }
-      // On success the page re-renders from the server via revalidatePath
     })
   }
 
@@ -143,8 +146,7 @@ export function PickClient({
         setSelectedPlayerId(null)
         setSelectedMatchId(null)
         setSelectedDeadline(null)
-        // The page re-renders from the server (revalidatePath in the action)
-        // which will refresh currentPick automatically
+        router.refresh()
       }
     })
   }

@@ -3,9 +3,11 @@
 /**
  * components/game/pick-match-card.tsx
  *
- * Displays a single match with both teams' players.
- * The user clicks a player to "preview" their selection — the pick
- * is not saved until they confirm in the PickClient.
+ * Displays a single match. By default collapsed — only the header is visible.
+ * The user clicks the header to expand and see both teams' players.
+ *
+ * Auto-expands if the user already has a pick in this match, so they can
+ * see their current selection without having to open it manually.
  *
  * Player states (mutually exclusive, in priority order):
  *   current  — the player the user already submitted as today's pick
@@ -15,6 +17,7 @@
  *   available — can be picked
  */
 
+import { useState } from 'react'
 import { DeadlineCountdown } from './deadline-countdown'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,6 +51,8 @@ interface PickMatchCardProps {
   currentPickPlayerId: number | null
   burnedPlayerIds: Set<number>
   positionFilter: string        // 'ALL' | 'GK' | 'DEF' | 'MID' | 'FWD'
+  // If true, the card starts expanded (e.g. user already has a pick here)
+  defaultExpanded?: boolean
   onSelect: (playerId: number, matchId: number, deadline: string) => void
 }
 
@@ -64,80 +69,122 @@ export function PickMatchCard({
   currentPickPlayerId,
   burnedPlayerIds,
   positionFilter,
+  defaultExpanded = false,
   onSelect,
 }: PickMatchCardProps) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+
   const now = new Date()
   const isDeadlinePassed = new Date(match.pick_deadline) <= now
   const isClosed = isDeadlinePassed || match.status === 'live' || match.status === 'finished'
 
-  // Format kickoff time for display (user's local timezone)
+  // Format kickoff time in the user's local timezone
   const kickoffLabel = new Date(match.kickoff_time).toLocaleTimeString('es-MX', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZoneName: 'short',
   })
 
-  // Players split by team, sorted by position then name, filtered by positionFilter
-  const homePlayers = match.players
-    .filter(p => p.team_id === match.home_team.id)
-    .filter(p => positionFilter === 'ALL' || p.position === positionFilter)
-    .sort((a, b) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position] || a.display_name.localeCompare(b.display_name))
+  // Count available players for the subtitle when collapsed
+  const availablePlayers = match.players.filter(
+    p => !burnedPlayerIds.has(p.id) && !isClosed
+  )
 
-  const awayPlayers = match.players
-    .filter(p => p.team_id === match.away_team.id)
-    .filter(p => positionFilter === 'ALL' || p.position === positionFilter)
-    .sort((a, b) => POSITION_ORDER[a.position] - POSITION_ORDER[b.position] || a.display_name.localeCompare(b.display_name))
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="border rounded-lg overflow-hidden">
-      {/* Match header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b">
+
+      {/* ── Clickable header ────────────────────────────────────────────── */}
+      <button
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+        onClick={() => setIsExpanded(prev => !prev)}
+        aria-expanded={isExpanded}
+      >
         <div>
-          <span className="font-semibold text-gray-900">
+          {/* Team names */}
+          <p className="font-semibold text-gray-900">
             {match.home_team.name} vs {match.away_team.name}
-          </span>
-          <span className="ml-3 text-sm text-gray-500">{kickoffLabel}</span>
+          </p>
+
+          {/* Subtitle: kickoff time + player count or status */}
+          <p className="text-xs text-gray-500 mt-0.5">
+            {kickoffLabel}
+            {isClosed
+              ? ' · Cerrado'
+              : ` · ${availablePlayers.length} jugador${availablePlayers.length !== 1 ? 'es' : ''} disponible${availablePlayers.length !== 1 ? 's' : ''}`
+            }
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0 ml-4">
+          {/* Deadline badge or countdown */}
           {isClosed ? (
             <span className="text-xs font-semibold uppercase tracking-wide bg-gray-200 text-gray-600 px-2 py-1 rounded">
               {match.status === 'live' ? 'En juego' : 'Cerrado'}
             </span>
           ) : (
-            <div className="text-sm">
-              <span className="text-gray-500 mr-1">Cierra en</span>
+            <div className="text-sm hidden sm:block">
+              <span className="text-gray-400 mr-1">Cierra en</span>
               <DeadlineCountdown deadline={match.pick_deadline} />
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Players grid — both teams side by side */}
-      <div className="grid grid-cols-2 divide-x">
-        <TeamPlayerList
-          team={match.home_team}
-          players={homePlayers}
-          isClosed={isClosed}
-          selectedPlayerId={selectedPlayerId}
-          currentPickPlayerId={currentPickPlayerId}
-          burnedPlayerIds={burnedPlayerIds}
-          pickDeadline={match.pick_deadline}
-          matchId={match.id}
-          onSelect={onSelect}
-        />
-        <TeamPlayerList
-          team={match.away_team}
-          players={awayPlayers}
-          isClosed={isClosed}
-          selectedPlayerId={selectedPlayerId}
-          currentPickPlayerId={currentPickPlayerId}
-          burnedPlayerIds={burnedPlayerIds}
-          pickDeadline={match.pick_deadline}
-          matchId={match.id}
-          onSelect={onSelect}
-        />
-      </div>
+          {/* Chevron */}
+          <span className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+            ▾
+          </span>
+        </div>
+      </button>
+
+      {/* ── Players grid (only visible when expanded) ────────────────────── */}
+      {isExpanded && (
+        <div>
+          {/* Deadline countdown visible on mobile (inside expanded area) */}
+          {!isClosed && (
+            <div className="px-4 py-2 border-b bg-white text-sm sm:hidden">
+              <span className="text-gray-400 mr-1">Cierra en</span>
+              <DeadlineCountdown deadline={match.pick_deadline} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 divide-x">
+            <TeamPlayerList
+              team={match.home_team}
+              players={match.players
+                .filter(p => p.team_id === match.home_team.id)
+                .filter(p => positionFilter === 'ALL' || p.position === positionFilter)
+                .sort((a, b) =>
+                  POSITION_ORDER[a.position] - POSITION_ORDER[b.position] ||
+                  a.display_name.localeCompare(b.display_name)
+                )}
+              isClosed={isClosed}
+              selectedPlayerId={selectedPlayerId}
+              currentPickPlayerId={currentPickPlayerId}
+              burnedPlayerIds={burnedPlayerIds}
+              pickDeadline={match.pick_deadline}
+              matchId={match.id}
+              onSelect={onSelect}
+            />
+            <TeamPlayerList
+              team={match.away_team}
+              players={match.players
+                .filter(p => p.team_id === match.away_team.id)
+                .filter(p => positionFilter === 'ALL' || p.position === positionFilter)
+                .sort((a, b) =>
+                  POSITION_ORDER[a.position] - POSITION_ORDER[b.position] ||
+                  a.display_name.localeCompare(b.display_name)
+                )}
+              isClosed={isClosed}
+              selectedPlayerId={selectedPlayerId}
+              currentPickPlayerId={currentPickPlayerId}
+              burnedPlayerIds={burnedPlayerIds}
+              pickDeadline={match.pick_deadline}
+              matchId={match.id}
+              onSelect={onSelect}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -215,16 +262,13 @@ function PlayerButton({
   matchId: number
   onSelect: (playerId: number, matchId: number, deadline: string) => void
 }) {
-  // Determine visual state and interactivity
   const isDisabled = isClosed || isBurned
 
   let buttonClass = 'w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors '
 
   if (isCurrentPick) {
-    // Already submitted as today's pick
     buttonClass += 'bg-green-100 border border-green-400 text-green-800 font-medium cursor-default'
   } else if (isSelected) {
-    // Clicked but not yet confirmed
     buttonClass += 'bg-blue-100 border border-blue-400 text-blue-800 font-medium'
   } else if (isBurned) {
     buttonClass += 'bg-gray-50 text-gray-400 cursor-not-allowed line-through'
@@ -241,15 +285,10 @@ function PlayerButton({
       onClick={() => onSelect(player.id, matchId, pickDeadline)}
       title={isBurned ? 'Ya elegiste este jugador en un día anterior' : undefined}
     >
-      {/* Position badge */}
       <span className="text-xs font-bold text-gray-400 w-7 shrink-0">
         {POSITION_LABEL[player.position]}
       </span>
-
-      {/* Player name */}
       <span className="truncate">{player.display_name}</span>
-
-      {/* State indicators */}
       {isCurrentPick && <span className="ml-auto text-green-600">✓</span>}
       {isBurned && <span className="ml-auto text-xs text-gray-400">🔥</span>}
     </button>

@@ -280,6 +280,8 @@ export function PickClient({
             currentPickPlayerId={currentPick?.player_id ?? null}
             burnedPlayerIds={burnedSet}
             positionFilter={positionFilter}
+            // Auto-expand the match where the user already has a pick
+            defaultExpanded={currentPick?.match_id === match.id}
             onSelect={handleSelect}
           />
         ))}

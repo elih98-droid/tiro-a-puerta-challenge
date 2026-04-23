@@ -7,7 +7,12 @@ import { signOut } from '@/lib/auth/actions'
 export function LogoutButton() {
   return (
     <form action={signOut}>
-      <button type="submit">Cerrar sesión</button>
+      <button
+        type="submit"
+        className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
+      >
+        Salir
+      </button>
     </form>
   )
 }

@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 23 de abril de 2026 (tarea 6.5 completa)
+**Última actualización:** 23 de abril de 2026 (tareas 6 y 6.5 completas + nav funcional)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -133,11 +133,13 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [x] **RLS fixes**: migración `20260422000001` (SECURITY DEFINER en `log_pick_history`), migración `20260422000002` (política FOR DELETE explícita en `user_picks`).
 - [x] **Fix is_alive**: `evaluate-picks` no infla `days_survived`/`total_goals_accumulated` de usuarios eliminados con pre-picks futuros (`.eq("is_alive", true)`).
 
-#### 6. Leaderboard
-- [ ] Página pública de leaderboard (`/leaderboard`).
-- [ ] Mostrar: usuarios vivos, goles acumulados, días sobrevividos.
-- [ ] Ordenar: primero por vivos/eliminados, luego por goles acumulados (desempate §5.1).
-- [ ] Mostrar picks de otros usuarios (solo después del deadline, `game-rules.md §10.1`).
+#### 6. Leaderboard ✅
+- [x] Página pública de leaderboard (`/leaderboard`) — accesible sin autenticación.
+- [x] Mostrar: usuarios vivos, goles acumulados, días sobrevividos. Fila del usuario actual resaltada.
+- [x] Ordenar: vivos primero → goles acumulados DESC → días sobrevividos DESC (§5.1).
+- [x] Usuarios sin sesión ven el leaderboard con link "Iniciar sesión" en lugar del nav autenticado.
+- [x] Fix: `/my-picks` agregado a `PROTECTED_ROUTES` en proxy (bug pre-existente).
+- [ ] *(Pendiente)* Mostrar "pick de hoy" de cada usuario en el leaderboard, solo después del deadline (`game-rules.md §10.1`). Requiere query extra por usuario — diferido.
 
 #### 6.5. Mis picks (`/my-picks`) ✅
 Sección privada donde cada participante puede ver un resumen de todos sus picks por día — para tener claridad de qué jugadores ya usó y cuáles aún tiene disponibles.
@@ -239,7 +241,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
 | Mecánica de picks | ✅ Completo |
 | Mis picks (/my-picks) | ✅ Completo |
-| Leaderboard | ⏳ Pendiente |
+| Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ⏳ Pendiente |
 | Tests críticos | ⏳ Pendiente |

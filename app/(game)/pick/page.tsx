@@ -186,6 +186,7 @@ export default async function PickPage({
       />
 
       <PickClient
+        key={matchDay.id}
         matchDay={matchDay}
         matches={matches}
         currentPick={currentPick}

@@ -288,9 +288,11 @@ function PlayerButton({
       <span className="text-xs font-bold text-gray-400 w-7 shrink-0">
         {POSITION_LABEL[player.position]}
       </span>
-      <span className="truncate">{player.display_name}</span>
+      <span className="truncate">
+        {player.display_name}
+        {isBurned && <span className="ml-1 text-xs">🚫</span>}
+      </span>
       {isCurrentPick && <span className="ml-auto text-green-600">✓</span>}
-      {isBurned && <span className="ml-auto text-xs">🚫</span>}
     </button>
   )
 }

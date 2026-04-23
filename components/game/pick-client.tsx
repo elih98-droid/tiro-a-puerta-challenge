@@ -16,7 +16,7 @@
  */
 
 import { useState, useTransition } from 'react'
-import { submitPick } from '@/app/(game)/pick/actions'
+import { submitPick, removePick } from '@/app/(game)/pick/actions'
 import { PickMatchCard, type MatchData, type Player } from './pick-match-card'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,8 +48,9 @@ interface PickClientProps {
   currentPick: CurrentPick | null
   burnedPlayerIds: number[]
   userStatus: UserStatus | null
-  // Lookup map to find which player/team the user selected (for the confirmation panel)
   allPlayers: Player[]
+  // Whether this day is today or a future day the user is planning ahead
+  isToday: boolean
 }
 
 // ─── Position filter options ──────────────────────────────────────────────────
@@ -71,6 +72,7 @@ export function PickClient({
   burnedPlayerIds,
   userStatus,
   allPlayers,
+  isToday,
 }: PickClientProps) {
   // The player the user clicked — pending confirmation (not yet saved)
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null)
@@ -80,7 +82,7 @@ export function PickClient({
   // Position filter
   const [positionFilter, setPositionFilter] = useState('ALL')
 
-  // Server Action state
+  // Server Action state (submit + remove share the same pending/error state)
   const [isPending, startTransition] = useTransition()
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState(false)
@@ -109,6 +111,17 @@ export function PickClient({
     setSelectedMatchId(null)
     setSelectedDeadline(null)
     setActionError(null)
+  }
+
+  function handleRemovePick() {
+    setActionError(null)
+    startTransition(async () => {
+      const result = await removePick(matchDay.id)
+      if (result.error) {
+        setActionError(result.error)
+      }
+      // On success the page re-renders from the server via revalidatePath
+    })
   }
 
   function handleConfirm() {
@@ -192,9 +205,18 @@ export function PickClient({
           {currentPick.is_locked ? (
             <p className="mt-1 text-sm text-gray-500">🔒 Pick cerrado — deadline vencido</p>
           ) : (
-            <p className="mt-1 text-sm text-gray-600">
-              Puedes cambiar tu pick hasta que venza el deadline.
-            </p>
+            <div className="mt-2 flex items-center gap-3 flex-wrap">
+              <p className="text-sm text-gray-600">
+                {isToday ? 'Puedes cambiar tu pick hasta que venza el deadline.' : 'Pick planeado. Puedes quitarlo para usar este jugador otro día.'}
+              </p>
+              <button
+                onClick={handleRemovePick}
+                disabled={isPending}
+                className="text-sm text-red-600 hover:text-red-800 underline disabled:opacity-50 shrink-0"
+              >
+                {isPending ? 'Quitando...' : 'Quitar pick'}
+              </button>
+            </div>
           )}
 
           {currentPick.result && (

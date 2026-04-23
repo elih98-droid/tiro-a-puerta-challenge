@@ -1,29 +1,41 @@
 import { createClient } from '@/lib/supabase/server'
 import { PickClient } from '@/components/game/pick-client'
+import { PickDayNav } from '@/components/game/pick-day-nav'
 import type { MatchData, Player, Team } from '@/components/game/pick-match-card'
 
 /**
  * app/(game)/pick/page.tsx
  *
- * Pick page — /pick
- * Where the user chooses their player for the day.
+ * Pick page — /pick or /pick?date=YYYY-MM-DD
  *
- * This is a Server Component: all data fetching happens here, on the server.
- * The interactive parts (selection, confirmation, filters) live in PickClient.
+ * Without a date param: shows today's match day (in CDMX timezone).
+ * With a date param:    shows that specific match day — used for day
+ *                       navigation so users can plan picks in advance.
  *
- * Data fetched:
- *   1. User's tournament status (alive / eliminated)
- *   2. Today's match_day (by CDMX date — UTC-6, no DST)
- *   3. All matches today with kickoff time, deadline, and status
- *   4. All players from the teams playing today
- *   5. User's current pick for today (if any)
- *   6. User's burned player IDs (picks from previous days)
+ * Pre-picks for future days are real picks: they burn the player just
+ * like a same-day pick. To free a player, the user must go to that
+ * future day and remove the pick before the deadline passes.
  *
- * The proxy (proxy.ts) guarantees the user is authenticated before reaching here.
+ * searchParams is a Promise in Next.js 15 — must be awaited.
  */
-export default async function PickPage() {
+export default async function PickPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // ── Determine the target date ──────────────────────────────────────────────
+  // CDMX is permanently UTC-6 (no DST since 2023). 'en-CA' gives YYYY-MM-DD.
+  const todayInCdmx = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Mexico_City',
+  }).format(new Date())
+
+  const { date: dateParam } = await searchParams
+  // Only accept YYYY-MM-DD format; fall back to today if malformed
+  const targetDate = dateParam?.match(/^\d{4}-\d{2}-\d{2}$/) ? dateParam : todayInCdmx
+  const isToday = targetDate === todayInCdmx
 
   // ── 1. User tournament status ──────────────────────────────────────────────
   const { data: userStatus } = await supabase
@@ -32,53 +44,66 @@ export default async function PickPage() {
     .eq('user_id', user!.id)
     .single()
 
-  // ── 2. Today's match_day in CDMX time (UTC-6, no DST) ────────────────────
-  // Intl.DateTimeFormat with 'en-CA' locale gives 'YYYY-MM-DD' format.
-  // America/Mexico_City is permanently UTC-6 since Mexico abolished DST in 2023.
-  const todayInCdmx = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Mexico_City',
-  }).format(new Date())
-
+  // ── 2. Match day for the target date ──────────────────────────────────────
   const { data: matchDay } = await supabase
     .from('match_days')
     .select('id, match_date, day_number')
-    .eq('match_date', todayInCdmx)
+    .eq('match_date', targetDate)
     .maybeSingle()
 
-  // No matches today → show a simple message
+  // ── 3. Adjacent match days for navigation arrows ───────────────────────────
+  // Run both queries in parallel since they're independent.
+  const [{ data: prevDayRow }, { data: nextDayRow }] = matchDay
+    ? await Promise.all([
+        supabase
+          .from('match_days')
+          .select('match_date')
+          .lt('day_number', matchDay.day_number)
+          .order('day_number', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('match_days')
+          .select('match_date')
+          .gt('day_number', matchDay.day_number)
+          .order('day_number', { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ])
+    : [{ data: null }, { data: null }]
+
+  // ── No match day for this date ─────────────────────────────────────────────
   if (!matchDay) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-10">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Pick del día</h1>
-        <p className="text-gray-500">No hay partidos programados para hoy ({todayInCdmx}).</p>
+        <p className="text-gray-500">
+          No hay partidos programados para el {targetDate}.
+        </p>
       </div>
     )
   }
 
-  // ── 3. Matches for today ───────────────────────────────────────────────────
+  // ── 4. Matches for this day ────────────────────────────────────────────────
   const { data: rawMatches } = await supabase
     .from('matches')
     .select('id, kickoff_time, pick_deadline, status, home_team_id, away_team_id')
     .eq('match_day_id', matchDay.id)
     .order('kickoff_time', { ascending: true })
 
-  // ── 4. Teams and players for today ────────────────────────────────────────
-  // Collect all unique team IDs from today's matches
+  // ── 5. Teams and players ───────────────────────────────────────────────────
   const teamIds = [
     ...new Set(
-      (rawMatches ?? []).flatMap(m => [m.home_team_id, m.away_team_id]).filter(Boolean)
+      (rawMatches ?? [])
+        .flatMap(m => [m.home_team_id, m.away_team_id])
+        .filter(Boolean)
     ),
   ]
 
-  // Fetch teams and players in parallel
   const [{ data: rawTeams }, { data: rawPlayers }] = await Promise.all([
     teamIds.length > 0
-      ? supabase
-          .from('teams')
-          .select('id, name, code')
-          .in('id', teamIds)
+      ? supabase.from('teams').select('id, name, code').in('id', teamIds)
       : Promise.resolve({ data: [] }),
-
     teamIds.length > 0
       ? supabase
           .from('players')
@@ -88,14 +113,11 @@ export default async function PickPage() {
       : Promise.resolve({ data: [] }),
   ])
 
-  // Build a lookup map for teams
   const teamById = new Map<number, Team>(
     (rawTeams ?? []).map(t => [t.id, t as Team])
   )
-
   const allPlayers = (rawPlayers ?? []) as Player[]
 
-  // Assemble MatchData objects (the shape PickMatchCard expects)
   const matches: MatchData[] = (rawMatches ?? [])
     .filter(m => teamById.has(m.home_team_id) && teamById.has(m.away_team_id))
     .map(m => ({
@@ -110,7 +132,7 @@ export default async function PickPage() {
       ),
     }))
 
-  // ── 5. User's current pick for today ──────────────────────────────────────
+  // ── 6. Current pick for this day ───────────────────────────────────────────
   const { data: currentPickRaw } = await supabase
     .from('user_picks')
     .select(`
@@ -125,7 +147,6 @@ export default async function PickPage() {
     .eq('match_day_id', matchDay.id)
     .maybeSingle()
 
-  // Normalize the Supabase nested relation to a plain object
   const currentPick = currentPickRaw
     ? {
         player_id: currentPickRaw.player_id,
@@ -139,28 +160,30 @@ export default async function PickPage() {
       }
     : null
 
-  // ── 6. Burned player IDs (picks from previous days) ───────────────────────
-  // A player is "burned" if the user picked them on any day other than today.
-  // We use user_picks (final submitted picks) as the source of truth here.
-  // This correctly catches cross-day repeats for the final committed pick per day.
-  const { data: previousPicks } = await supabase
+  // ── 7. Burned player IDs (picks from ALL other days) ──────────────────────
+  // This includes both past picks and pre-picks on other future days.
+  // A player picked on any other day cannot be picked on this day.
+  const { data: otherPicks } = await supabase
     .from('user_picks')
     .select('player_id')
     .eq('user_id', user!.id)
     .neq('match_day_id', matchDay.id)
 
-  const burnedPlayerIds = (previousPicks ?? []).map(p => p.player_id)
+  const burnedPlayerIds = (otherPicks ?? []).map(p => p.player_id)
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Pick del día</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {matchDay.match_date} · Día {matchDay.day_number} del torneo
-        </p>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Pick del día</h1>
+
+      <PickDayNav
+        matchDate={matchDay.match_date}
+        dayNumber={matchDay.day_number}
+        isToday={isToday}
+        prevDate={prevDayRow?.match_date ?? null}
+        nextDate={nextDayRow?.match_date ?? null}
+      />
 
       <PickClient
         matchDay={matchDay}
@@ -169,6 +192,7 @@ export default async function PickPage() {
         burnedPlayerIds={burnedPlayerIds}
         userStatus={userStatus}
         allPlayers={allPlayers}
+        isToday={isToday}
       />
     </div>
   )

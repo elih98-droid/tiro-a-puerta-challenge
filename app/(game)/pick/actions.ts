@@ -115,3 +115,53 @@ export async function submitPick(
   revalidatePath('/dashboard')
   return {}
 }
+
+/**
+ * Removes the user's pick for a given match day.
+ *
+ * Only allowed when:
+ *   - The pick exists and belongs to this user.
+ *   - The pick is NOT locked (deadline hasn't passed yet).
+ *
+ * Removing a pre-pick frees the player for use on another day.
+ * If the user doesn't re-pick before the deadline, the evaluate-picks
+ * cron will eliminate them for that day (E1 — no_pick).
+ */
+export async function removePick(matchDayId: number): Promise<{ error?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No estás autenticado.' }
+
+  // Fetch the pick to validate it before deleting
+  const { data: pick } = await supabase
+    .from('user_picks')
+    .select('id, is_locked, effective_deadline')
+    .eq('user_id', user.id)
+    .eq('match_day_id', matchDayId)
+    .single()
+
+  if (!pick) return { error: 'No tienes pick para este día.' }
+
+  if (pick.is_locked) {
+    return { error: 'Tu pick ya está bloqueado y no puede quitarse.' }
+  }
+
+  if (new Date(pick.effective_deadline) <= new Date()) {
+    return { error: 'El deadline ya pasó — este pick no puede quitarse.' }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('user_picks')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('match_day_id', matchDayId)
+
+  if (deleteError) {
+    console.error('removePick error:', deleteError.message)
+    return { error: 'Error al quitar el pick. Intenta de nuevo.' }
+  }
+
+  revalidatePath('/pick')
+  return {}
+}

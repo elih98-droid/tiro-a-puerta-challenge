@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 22 de abril de 2026 (noche — tarea 5 completa)
+**Última actualización:** 27 de abril de 2026 (minuto real del partido en tracker en vivo)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -133,18 +133,30 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [x] **RLS fixes**: migración `20260422000001` (SECURITY DEFINER en `log_pick_history`), migración `20260422000002` (política FOR DELETE explícita en `user_picks`).
 - [x] **Fix is_alive**: `evaluate-picks` no infla `days_survived`/`total_goals_accumulated` de usuarios eliminados con pre-picks futuros (`.eq("is_alive", true)`).
 
-#### 6. Leaderboard
-- [ ] Página pública de leaderboard (`/leaderboard`).
-- [ ] Mostrar: usuarios vivos, goles acumulados, días sobrevividos.
-- [ ] Ordenar: primero por vivos/eliminados, luego por goles acumulados (desempate §5.1).
-- [ ] Mostrar picks de otros usuarios (solo después del deadline, `game-rules.md §10.1`).
+#### 6. Leaderboard ✅
+- [x] Página pública de leaderboard (`/leaderboard`) — accesible sin autenticación.
+- [x] Mostrar: usuarios vivos, goles acumulados, días sobrevividos. Fila del usuario actual resaltada.
+- [x] Ordenar: vivos primero → goles acumulados DESC → días sobrevividos DESC (§5.1).
+- [x] Usuarios sin sesión ven el leaderboard con link "Iniciar sesión" en lugar del nav autenticado.
+- [x] Fix: `/my-picks` agregado a `PROTECTED_ROUTES` en proxy (bug pre-existente).
+- [ ] *(Pendiente)* Mostrar "pick de hoy" de cada usuario en el leaderboard, solo después del deadline (`game-rules.md §10.1`). Requiere query extra por usuario — diferido.
 
-#### 6.5. Mis picks (`/my-picks`)
+#### 6.5. Mis picks (`/my-picks`) ✅
 Sección privada donde cada participante puede ver un resumen de todos sus picks por día — para tener claridad de qué jugadores ya usó y cuáles aún tiene disponibles.
-- [ ] Página `/my-picks` (o sección dentro del dashboard): lista de días jugados con el jugador elegido, resultado del día (sobrevivió / eliminado / anulado / pendiente) y tiro a puerta/goles si aplica.
-- [ ] Indicar visualmente qué jugadores ya están quemados (usados en días anteriores).
-- [ ] Ordenar por día (más reciente primero).
-- [ ] Mostrar picks futuros/planeados también (pre-picks pendientes de evaluación).
+- [x] Página `/my-picks`: lista de días jugados con el jugador elegido, resultado del día (sobrevivió / eliminado / anulado / pendiente) y tiro a puerta/goles si aplica.
+- [x] Indicar visualmente qué jugadores ya están quemados — contador al tope ("X jugadores usados") y badge por cada entrada.
+- [x] Ordenar por día (más reciente primero).
+- [x] Mostrar picks futuros/planeados también (pre-picks con badge "Pendiente").
+- [x] Fix: navegación de días en `/pick` ahora funciona aunque hoy no tenga partidos (always-run prev/next query + PickDayNav en el empty state).
+
+#### 6.6. Tracker en vivo del pick ✅
+Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez que el deadline vence.
+- [x] Componente `LiveMatchStats`: marcador del partido, badge **EN VIVO** (parpadeante) / **FINALIZADO**, tiros a puerta, goles y minutos jugados del jugador elegido.
+- [x] Indicador clave de supervivencia: ✅ con tiro / ⚠️ sin tiro aún (visible incluso si el jugador no fue convocado).
+- [x] Minuto aproximado del partido calculado desde `kickoff_time` (ajuste de ~15 min por entretiempo). No exacto — ignora added time.
+- [x] Polling automático cada 60 segundos (sincronizado con el worker `sync-live-matches`).
+- [x] Fix dashboard: query de match day cambiada de "dentro de la ventana de picks" a "por fecha del día", para que el tracker siga visible durante y después del partido.
+- [x] Columna `match_minute INTEGER` en tabla `matches` (migración `20260427000000`) + worker la actualiza desde `fixture.status.elapsed`. `LiveMatchStats` lee el minuto real de DB.
 
 #### 7. Evaluación automática de picks (cron job) ✅
 - [x] **Sincronización con API deportiva**: worker/cron que actualiza `matches.status` y `player_match_stats` cada ~60 segundos durante partidos en vivo (`sync-live-matches`).
@@ -153,6 +165,7 @@ Sección privada donde cada participante puede ver un resumen de todos sus picks
 - [x] Manejo de casos borde: partido cancelado (`void_cancelled_match`), jugador que no jugó (`void_did_not_play`), usuario sin pick (`no_pick`). (`game-rules.md §7`)
 - [x] **Fix trigger `validate_pick_timing`**: permite updates del sistema después del deadline (migración `20260422000000`).
 - [ ] *(Futuro)* Respetar ventana de 24h antes de marcar `is_processed = TRUE` (`game-rules.md §6.5`). Actualmente evalúa en cuanto todos los partidos del día están `finished`.
+- [x] **Caso borde validado (27 abr):** jugador no convocado (sin fila en `player_match_stats`) → resultado `void_did_not_play` → usuario eliminado. Correcto según §4.2 E3 y §7.5. C. Hudson-Odoi no convocado vs Sunderland confirmó el comportamiento.
 
 ---
 
@@ -204,8 +217,11 @@ Sección privada donde cada participante puede ver un resumen de todos sus picks
 - [ ] Remover página `/health-check` antes de producción.
 
 #### 14. Despliegue y configuración de producción
-- [ ] Configurar proyecto en Vercel (variables de entorno, dominio).
-- [ ] Configurar Vercel Cron Jobs para workers.
+⚠️ **El proyecto NO está desplegado en Vercel todavía.** Solo existe en local.
+- [ ] Crear proyecto en Vercel y conectar el repo de GitHub.
+- [ ] Configurar variables de entorno en Vercel (todas las de `.env.local`).
+- [ ] Configurar dominio.
+- [ ] Configurar Vercel Cron Jobs para workers (`sync-live-matches`, `evaluate-picks`). En local deben invocarse manualmente con `curl`.
 - [ ] Configurar backups de Supabase más frecuentes durante el torneo (`database-schema.md §9.3`).
 
 ---
@@ -236,8 +252,10 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Integración API-Football + pruebas Premier League | ✅ Completo — prueba en vivo superada (22 abr) |
 | Evaluación automática de picks (cron) | ✅ Completo — loop end-to-end verificado (22 abr) |
 | Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
-| Mecánica de picks | ⏳ Pendiente |
-| Leaderboard | ⏳ Pendiente |
+| Mecánica de picks | ✅ Completo |
+| Mis picks (/my-picks) | ✅ Completo |
+| Tracker en vivo del pick | ✅ Completo |
+| Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ⏳ Pendiente |
 | Tests críticos | ⏳ Pendiente |

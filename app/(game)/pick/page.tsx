@@ -52,32 +52,39 @@ export default async function PickPage({
     .maybeSingle()
 
   // ── 3. Adjacent match days for navigation arrows ───────────────────────────
-  // Run both queries in parallel since they're independent.
-  const [{ data: prevDayRow }, { data: nextDayRow }] = matchDay
-    ? await Promise.all([
-        supabase
-          .from('match_days')
-          .select('match_date')
-          .lt('day_number', matchDay.day_number)
-          .order('day_number', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from('match_days')
-          .select('match_date')
-          .gt('day_number', matchDay.day_number)
-          .order('day_number', { ascending: true })
-          .limit(1)
-          .maybeSingle(),
-      ])
-    : [{ data: null }, { data: null }]
+  // Always query by date so navigation works even when the current day has
+  // no matches (e.g. today is a rest day between match days).
+  const [{ data: prevDayRow }, { data: nextDayRow }] = await Promise.all([
+    supabase
+      .from('match_days')
+      .select('match_date')
+      .lt('match_date', targetDate)
+      .order('match_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('match_days')
+      .select('match_date')
+      .gt('match_date', targetDate)
+      .order('match_date', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ])
 
   // ── No match day for this date ─────────────────────────────────────────────
+  // Still render the nav so the user can navigate to the nearest match day.
   if (!matchDay) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Pick del día</h1>
-        <p className="text-gray-500">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">Pick del día</h1>
+        <PickDayNav
+          matchDate={targetDate}
+          dayNumber={0}
+          isToday={isToday}
+          prevDate={prevDayRow?.match_date ?? null}
+          nextDate={nextDayRow?.match_date ?? null}
+        />
+        <p className="text-gray-500 mt-4">
           No hay partidos programados para el {targetDate}.
         </p>
       </div>

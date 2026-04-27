@@ -3,7 +3,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 
 // Routes that require the user to be authenticated AND approved.
 // Any path that *starts with* one of these strings is protected.
-const PROTECTED_ROUTES = ['/dashboard', '/pick', '/profile']
+// NOTE: /leaderboard is intentionally absent — it's publicly accessible.
+const PROTECTED_ROUTES = ['/dashboard', '/pick', '/my-picks', '/profile']
 
 // Routes that require the user to be authenticated AND an admin.
 const ADMIN_ROUTES = ['/admin']

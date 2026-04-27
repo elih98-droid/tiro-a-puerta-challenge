@@ -129,7 +129,9 @@ async function syncMatch(match: {
     const wentToExtraTime = apiFixture.score.extratime.home !== null;
     const wentToPenalties = apiFixture.score.penalty.home !== null;
 
-    // Step 2: Update match status and scores in DB.
+    // Step 2: Update match status, scores, and current minute in DB.
+    // match_minute comes from fixture.status.elapsed (real API minute).
+    // Set to null when finished so the tracker doesn't show a stale minute.
     await supabase
       .from("matches")
       .update({
@@ -138,6 +140,7 @@ async function syncMatch(match: {
         away_score: apiFixture.goals.away ?? null,
         went_to_extra_time: wentToExtraTime,
         went_to_penalties: wentToPenalties,
+        match_minute: newStatus === "live" ? (apiFixture.fixture.status.elapsed ?? null) : null,
       })
       .eq("id", match.id);
 

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { LiveMatchStats } from '@/components/game/live-match-stats'
 
 /**
  * Dashboard — /dashboard
@@ -27,14 +28,15 @@ export default async function DashboardPage() {
       .single(),
   ])
 
-  // Check if there is an active match day today.
-  // A match day is "active" if today's date falls within its pick window.
-  const today = new Date().toISOString()
+  // Find today's match day by calendar date (CDMX timezone).
+  // We intentionally do NOT filter by pick window here — the window controls
+  // when picks can be made, but we always want to show the user's pick and
+  // the live tracker even after the window has closed (i.e. during the match).
+  const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) // 'YYYY-MM-DD'
   const { data: todayMatchDay } = await supabase
     .from('match_days')
     .select('id, match_date, day_number, pick_window_opens_at, pick_window_closes_at')
-    .lte('pick_window_opens_at', today)
-    .gte('pick_window_closes_at', today)
+    .eq('match_date', todayDate)
     .single()
 
   // If there is an active match day, fetch the user's pick for it.
@@ -42,6 +44,8 @@ export default async function DashboardPage() {
     ? await supabase
         .from('user_picks')
         .select(`
+          match_id,
+          player_id,
           is_locked,
           effective_deadline,
           result,
@@ -122,6 +126,20 @@ export default async function DashboardPage() {
               </strong>
             </p>
             {todayPick.is_locked && <p>🔒 Pick cerrado</p>}
+
+            {/* Live stats tracker — shows once the pick deadline has passed, regardless
+                of whether the cron has run yet to set is_locked = TRUE.
+                We use effective_deadline directly so this works in local dev too. */}
+            {todayPick.effective_deadline &&
+             new Date(todayPick.effective_deadline) <= new Date() &&
+             todayPick.match_id &&
+             todayPick.player_id && (
+              <LiveMatchStats
+                matchId={todayPick.match_id as number}
+                playerId={todayPick.player_id as number}
+              />
+            )}
+
             {todayPick.result && (
               <p>Resultado: <strong>{formatPickResult(todayPick.result)}</strong></p>
             )}

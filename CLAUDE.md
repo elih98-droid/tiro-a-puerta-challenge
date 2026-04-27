@@ -37,7 +37,7 @@ Si Claude Code va a implementar algo que toca las reglas del juego o el schema, 
 - **Cron jobs:** Vercel Cron Jobs
 - **Monitoreo de errores:** Sentry
 - **Analytics:** Vercel Analytics
-- **Deploy:** Vercel
+- **Deploy:** Vercel *(pendiente — proyecto NO desplegado aún, solo en local)*
 - **Control de versiones:** GitHub con PRs obligatorias a `main` (main protegido)
 
 ### Restricción sobre el stack
@@ -212,9 +212,43 @@ npm run seed:pl:teams      # 20 equipos → tabla teams
 npm run seed:pl:players    # planteles → tabla players (requiere teams)
 npm run seed:pl:matches    # fixture → tablas match_days + matches (requiere teams)
 
-# Invocar el worker de sync manualmente (con npm run dev activo)
-curl http://localhost:3000/api/cron/sync-live-matches
+# Invocar los workers manualmente (con npm run dev activo)
+curl http://localhost:3000/api/cron/sync-live-matches   # sincroniza stats en vivo
+curl http://localhost:3000/api/cron/evaluate-picks      # lockea picks y evalúa resultados
+
+# ⚠️ En local los crons NO corren solos — hay que invocarlos a mano.
+# Durante una prueba en vivo: correr sync-live-matches cada ~60s mientras el partido está activo,
+# luego correr evaluate-picks una vez que el partido esté finished.
 ```
+
+### Reset manual de usuario de prueba (solo para testing)
+
+Para resetear `elias_test` después de una eliminación durante pruebas, correr en el SQL Editor de Supabase **después** de que `evaluate-picks` haya procesado el día:
+
+```sql
+-- Revive al usuario
+UPDATE user_status SET
+  is_alive                   = TRUE,
+  eliminated_on_match_day_id = NULL,
+  elimination_reason         = NULL
+WHERE user_id = (SELECT id FROM users WHERE username = 'elias_test');
+
+-- Limpia el resultado del pick del día (reemplaza la fecha)
+UPDATE user_picks SET
+  result                = NULL,
+  shots_on_target_count = NULL,
+  goals_scored          = NULL,
+  processed_at          = NULL,
+  is_locked             = FALSE
+WHERE user_id = (SELECT id FROM users WHERE username = 'elias_test')
+  AND match_day_id = (SELECT id FROM match_days WHERE match_date = 'YYYY-MM-DD');
+```
+
+⚠️ Fix manual exclusivo para pruebas. No existe en la app ni aplica a usuarios reales.
+
+### Comportamiento validado: jugador no convocado
+
+Si el jugador elegido no tiene fila en `player_match_stats` para su partido (no convocado, no en banca, no jugó), el evaluador lo trata como `void_did_not_play` con `elimination_reason = player_did_not_play`. **El usuario queda eliminado.** Esto es correcto según `game-rules.md §4.2 E3` y §7.5. Validado el 27 de abril con C. Hudson-Odoi (Nottingham Forest, no convocado vs Sunderland).
 
 ### Notas sobre los scripts de seed
 
@@ -258,6 +292,10 @@ Al abrir el proyecto, Claude Code idealmente:
 - **v1.3 (abril 2026):** prueba en vivo con Premier League superada el 22 de abril — worker sincroniza `player_match_stats` en tiempo real (Haaland: 1 tiro + 1 gol confirmados en DB). Pipeline API-Football → Supabase 100% funcional.
 - **v1.4 (abril 2026):** loop completo del juego verificado en vivo. Cron `evaluate-picks` implementado: lock de picks, evaluación de resultados (survived/eliminated/void_*), actualización de `user_status`. Fix al trigger `validate_pick_timing`. elias_test sobrevivió, El_Conde eliminado — prueba 100% exitosa.
 - **v1.5 (abril 2026):** sistema de picks completo (tarea 5). Página `/pick` con navegación por día, picks por adelantado (hasta 3 días), tarjetas de partido desplegables, filtro por posición, countdown de deadline, panel de confirmación sticky (mobile-first), jugadores quemados con 🚫. Dos RLS fixes (SECURITY DEFINER en `log_pick_history`, FOR DELETE explícita en `user_picks`). Fix en `evaluate-picks`: no infla stats de usuarios eliminados con pre-picks futuros.
+- **v1.6 (abril 2026):** mecánica central completa. `/my-picks` (privado): historial de picks con badges de estado, stats post-evaluación, jugadores quemados. `/leaderboard` (público sin auth): tabla ordenada por vivos → goles → días, fila propia resaltada. Nav funcional con tab bar y highlight activo (`NavLinks` client component). Fix: `/pick` muestra nav de días aunque hoy no tenga partidos. Fix: `/my-picks` agregado a `PROTECTED_ROUTES` (bug pre-existente). Pendiente en leaderboard: "pick de hoy" por usuario post-deadline (§10.1).
+- **v1.7 (abril 2026):** tracker en vivo del pick (tarea 6.6). Componente `LiveMatchStats` en `/pick` y `/dashboard`: marcador, badge EN VIVO parpadeante, tiros a puerta, goles, minutos jugados, indicador de supervivencia ✅/⚠️ (visible aunque el jugador no haya sido convocado). Fix dashboard: query de match day por fecha en lugar de por ventana de picks (antes desaparecía durante el partido).
+- **v1.8 (abril 2026):** validación de caso borde — jugador no convocado (sin fila en `player_match_stats`) resulta en eliminación correcta (`void_did_not_play` / `player_did_not_play`). Confirmado el 27 de abril con C. Hudson-Odoi. Aclaración importante documentada: en local, `evaluate-picks` debe invocarse manualmente después del partido; sin esa llamada el pick queda pendiente indefinidamente.
+- **v1.9 (abril 2026):** minuto real del partido en el tracker en vivo. Columna `match_minute INTEGER` agregada a `matches` (migración `20260427000000`). Worker `sync-live-matches` escribe `fixture.status.elapsed` en cada sync; `LiveMatchStats` lo lee directo de DB. Eliminada la función `getApproxMinute` del cliente.
 
 ---
 

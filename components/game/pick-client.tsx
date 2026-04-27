@@ -19,6 +19,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { submitPick, removePick } from '@/app/(game)/pick/actions'
 import { PickMatchCard, type MatchData, type Player } from './pick-match-card'
+import { LiveMatchStats } from './live-match-stats'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -208,8 +209,14 @@ export function PickClient({
             </span>
           </p>
 
-          {currentPick.is_locked ? (
-            <p className="mt-1 text-sm text-gray-500">🔒 Pick cerrado — deadline vencido</p>
+          {currentPick.is_locked || new Date(currentPick.effective_deadline) <= new Date() ? (
+            <>
+              <p className="mt-1 text-sm text-gray-500">🔒 Pick cerrado — deadline vencido</p>
+              <LiveMatchStats
+                matchId={currentPick.match_id}
+                playerId={currentPick.player_id}
+              />
+            </>
           ) : (
             <div className="mt-2 flex items-center gap-3 flex-wrap">
               <p className="text-sm text-gray-600">

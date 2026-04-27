@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 23 de abril de 2026 (tareas 6 y 6.5 completas + nav funcional)
+**Última actualización:** 27 de abril de 2026 (minuto real del partido en tracker en vivo)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -149,6 +149,15 @@ Sección privada donde cada participante puede ver un resumen de todos sus picks
 - [x] Mostrar picks futuros/planeados también (pre-picks con badge "Pendiente").
 - [x] Fix: navegación de días en `/pick` ahora funciona aunque hoy no tenga partidos (always-run prev/next query + PickDayNav en el empty state).
 
+#### 6.6. Tracker en vivo del pick ✅
+Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez que el deadline vence.
+- [x] Componente `LiveMatchStats`: marcador del partido, badge **EN VIVO** (parpadeante) / **FINALIZADO**, tiros a puerta, goles y minutos jugados del jugador elegido.
+- [x] Indicador clave de supervivencia: ✅ con tiro / ⚠️ sin tiro aún (visible incluso si el jugador no fue convocado).
+- [x] Minuto aproximado del partido calculado desde `kickoff_time` (ajuste de ~15 min por entretiempo). No exacto — ignora added time.
+- [x] Polling automático cada 60 segundos (sincronizado con el worker `sync-live-matches`).
+- [x] Fix dashboard: query de match day cambiada de "dentro de la ventana de picks" a "por fecha del día", para que el tracker siga visible durante y después del partido.
+- [x] Columna `match_minute INTEGER` en tabla `matches` (migración `20260427000000`) + worker la actualiza desde `fixture.status.elapsed`. `LiveMatchStats` lee el minuto real de DB.
+
 #### 7. Evaluación automática de picks (cron job) ✅
 - [x] **Sincronización con API deportiva**: worker/cron que actualiza `matches.status` y `player_match_stats` cada ~60 segundos durante partidos en vivo (`sync-live-matches`).
 - [x] **Lock de picks**: `evaluate-picks` marca `user_picks.is_locked = TRUE` al vencer el `effective_deadline`.
@@ -156,6 +165,7 @@ Sección privada donde cada participante puede ver un resumen de todos sus picks
 - [x] Manejo de casos borde: partido cancelado (`void_cancelled_match`), jugador que no jugó (`void_did_not_play`), usuario sin pick (`no_pick`). (`game-rules.md §7`)
 - [x] **Fix trigger `validate_pick_timing`**: permite updates del sistema después del deadline (migración `20260422000000`).
 - [ ] *(Futuro)* Respetar ventana de 24h antes de marcar `is_processed = TRUE` (`game-rules.md §6.5`). Actualmente evalúa en cuanto todos los partidos del día están `finished`.
+- [x] **Caso borde validado (27 abr):** jugador no convocado (sin fila en `player_match_stats`) → resultado `void_did_not_play` → usuario eliminado. Correcto según §4.2 E3 y §7.5. C. Hudson-Odoi no convocado vs Sunderland confirmó el comportamiento.
 
 ---
 
@@ -207,8 +217,11 @@ Sección privada donde cada participante puede ver un resumen de todos sus picks
 - [ ] Remover página `/health-check` antes de producción.
 
 #### 14. Despliegue y configuración de producción
-- [ ] Configurar proyecto en Vercel (variables de entorno, dominio).
-- [ ] Configurar Vercel Cron Jobs para workers.
+⚠️ **El proyecto NO está desplegado en Vercel todavía.** Solo existe en local.
+- [ ] Crear proyecto en Vercel y conectar el repo de GitHub.
+- [ ] Configurar variables de entorno en Vercel (todas las de `.env.local`).
+- [ ] Configurar dominio.
+- [ ] Configurar Vercel Cron Jobs para workers (`sync-live-matches`, `evaluate-picks`). En local deben invocarse manualmente con `curl`.
 - [ ] Configurar backups de Supabase más frecuentes durante el torneo (`database-schema.md §9.3`).
 
 ---
@@ -241,6 +254,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
 | Mecánica de picks | ✅ Completo |
 | Mis picks (/my-picks) | ✅ Completo |
+| Tracker en vivo del pick | ✅ Completo |
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ⏳ Pendiente |

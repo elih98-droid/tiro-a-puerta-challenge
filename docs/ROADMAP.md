@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 29 de abril de 2026 (tarea 9 completa — responsividad desktop; diseño visual 100% finalizado)
+**Última actualización:** 30 de abril de 2026 (tarea 14 completa — deploy en Vercel, app en producción)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -225,11 +225,11 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [ ] Remover página `/health-check` antes de producción.
 
 #### 14. Despliegue y configuración de producción
-⚠️ **El proyecto NO está desplegado en Vercel todavía.** Solo existe en local.
-- [ ] Crear proyecto en Vercel y conectar el repo de GitHub.
-- [ ] Configurar variables de entorno en Vercel (todas las de `.env.local`).
-- [ ] Configurar dominio.
-- [ ] Configurar Vercel Cron Jobs para workers (`sync-live-matches`, `evaluate-picks`). En local deben invocarse manualmente con `curl`.
+- [x] Crear proyecto en Vercel y conectar el repo de GitHub (`elih98-droid/tiro-a-puerta-challenge`, rama `main`).
+- [x] Configurar variables de entorno en Vercel (5 vars: Supabase URL/anon/service role, API-Football key, CRON_SECRET).
+- [x] **App en producción** — `tiro-a-puerta.vercel.app` funcionando. Login, diseño y navegación verificados.
+- [ ] Configurar dominio personalizado.
+- [ ] Upgrade a Vercel Pro y reactivar Cron Jobs (`* * * * *`) — **obligatorio antes del Mundial**. Actualmente `vercel.json` tiene crons vacíos (limitación Hobby plan).
 - [ ] Configurar backups de Supabase más frecuentes durante el torneo (`database-schema.md §9.3`).
 
 ---

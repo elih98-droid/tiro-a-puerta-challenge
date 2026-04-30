@@ -183,6 +183,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **Barra de marca global** en `app/(game)/layout.tsx` — `TPMark` + wordmark centrado en todas las pestañas, clickeable → `/dashboard`.
 - [x] **`/signup` rediseñado** — misma identidad visual que login (Dirección 3). `TPMark` 72px, campos con íconos, `DarkCheckbox` custom para `over_18_confirmed` y `marketing_emails_opt_in`, CTA signature, esquinas HUD, validación en cliente.
 - [x] **`LiveMatchStats` rediseñado** — panel oscuro integrado con identidad Dirección 3. Score Bebas Neue, stats grandes con glow de color, badges JetBrains Mono. Sin Tailwind.
+- [x] **`/reset-password` y `/update-password` rediseñados** — identidad Dirección 3 completa. HUD corners, halo dorado, `TPMark` 72px, campos con íconos, toggle show/hide en passwords, estados de éxito en verde, CTA signature.
 - [x] **Tarea 9 — Responsividad desktop**: contenido de game layout centrado a `max-width: 480px`. Brand bar full-width con contenido centrado. Confirm panel del pick corregido a 480px. Auth pages ya estaban centradas a 460px.
 
 ### 🟡 PRIORIDAD MEDIA — Comunicaciones y UX completa

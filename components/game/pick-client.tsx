@@ -265,7 +265,7 @@ export function PickClient({
           borderTop: '1.5px solid rgba(201,168,76,0.35)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 12px) + 68px)', // clear bottom nav
         }}>
-          <div style={{ maxWidth: 600, margin: '0 auto', padding: '14px 16px 0' }}>
+          <div style={{ maxWidth: 480, margin: '0 auto', padding: '14px 16px 0' }}>
 
             <div style={{
               fontFamily: 'var(--font-jetbrains-mono), monospace',

@@ -1,20 +1,43 @@
 import { createClient } from '@/lib/supabase/server'
-import { LiveMatchStats } from '@/components/game/live-match-stats'
+import { LogoutButton } from '@/components/layout/logout-button'
+import { DashboardPickCard, type DashboardPickCardProps } from '@/components/game/dashboard-pick-card'
 
 /**
  * Dashboard — /dashboard
- * Main page for an authenticated user. Shows:
- *   - Their tournament status (alive, days survived, goals accumulated)
- *   - Their pick for today (or a message if no match day is active yet)
  *
- * This is a Server Component: all data fetching happens on the server,
- * no loading states needed on the client.
+ * Página principal del usuario autenticado. 4 escenarios posibles:
+ *   a) VIVO · Pick urgente  — vivo + hay partidos + sin pick aún
+ *   b) VIVO · Pick en vivo  — vivo + hay partidos + pick hecho
+ *   c) VIVO · Sin partidos  — vivo + sin partidos hoy
+ *   d) ELIMINADO            — usuario eliminado
+ *
+ * Server Component: todo el fetching ocurre en el servidor.
+ * DashboardPickCard (Client Component) maneja el countdown e interactividad.
  */
+
+// ── Paleta (Server Component — no puede importar de un .tsx cliente) ──
+const P = {
+  blue:     '#2A398D',
+  blueDeep: '#1B2566',
+  red:      '#E61D25',
+  green:    '#3CAC3B',
+  gold:     '#C9A84C',
+  panel:    '#11162A',
+  panelHi:  '#161C36',
+  bgDeep:   '#06080F',
+  bg:       '#0A0E1A',
+  line:     'rgba(255,255,255,0.08)',
+  goldLine: 'linear-gradient(90deg, transparent, #C9A84C88, transparent)',
+  ink:      '#fff',
+  sub:      'rgba(255,255,255,0.62)',
+  subDim:   'rgba(255,255,255,0.42)',
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch the user's profile and tournament status in parallel.
+  // ── Fetch paralelo: perfil + estado del torneo ──
   const [{ data: profile }, { data: status }] = await Promise.all([
     supabase
       .from('users')
@@ -23,160 +46,379 @@ export default async function DashboardPage() {
       .single(),
     supabase
       .from('user_status')
-      .select('is_alive, days_survived, total_goals_accumulated, elimination_reason, eliminated_on_match_day_id')
+      .select('is_alive, days_survived, total_goals_accumulated, elimination_reason')
       .eq('user_id', user!.id)
       .single(),
   ])
 
-  // Find today's match day by calendar date (CDMX timezone).
-  // We intentionally do NOT filter by pick window here — the window controls
-  // when picks can be made, but we always want to show the user's pick and
-  // the live tracker even after the window has closed (i.e. during the match).
-  const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) // 'YYYY-MM-DD'
+  // ── Match day de hoy (por fecha CDMX) ──
+  const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
   const { data: todayMatchDay } = await supabase
     .from('match_days')
-    .select('id, match_date, day_number, pick_window_opens_at, pick_window_closes_at')
+    .select('id, pick_window_closes_at')
     .eq('match_date', todayDate)
     .single()
 
-  // If there is an active match day, fetch the user's pick for it.
+  // ── Pick de hoy (si existe match day) ──
   const { data: todayPick } = todayMatchDay
     ? await supabase
         .from('user_picks')
         .select(`
           match_id,
           player_id,
-          is_locked,
           effective_deadline,
           result,
-          players ( display_name, position ),
-          teams:players ( team_id, teams ( name ) )
+          players ( display_name, position )
         `)
         .eq('user_id', user!.id)
         .eq('match_day_id', todayMatchDay.id)
         .single()
     : { data: null }
 
-  return (
-    <div>
-      <h1>Hola, {profile?.username}</h1>
+  // ── Datos iniciales del partido en vivo (SSR para evitar flash) ──
+  // Solo cuando el usuario ya hizo pick y el deadline pasó
+  type MatchRow = {
+    status: string
+    match_minute: number | null
+    home_score: number | null
+    away_score: number | null
+    home_team: { name: string } | null
+    away_team: { name: string } | null
+  }
+  type StatsRow = { shots_on_target: number; goals: number }
 
-      {/* Email verification warning.
-          We check user.email_confirmed_at (from Supabase Auth) rather than
-          profile.email_verified (from public.users) because the auth value
-          is always up to date, whereas the DB field requires a separate trigger
-          to stay in sync. */}
+  let initialMatch: MatchRow | null = null
+  let initialStats: StatsRow | null = null
+
+  if (
+    todayPick?.match_id &&
+    todayPick?.player_id &&
+    todayPick?.effective_deadline &&
+    new Date(todayPick.effective_deadline as string) <= new Date()
+  ) {
+    const [{ data: m }, { data: s }] = await Promise.all([
+      supabase
+        .from('matches')
+        .select('status, match_minute, home_score, away_score, home_team:home_team_id(name), away_team:away_team_id(name)')
+        .eq('id', todayPick.match_id)
+        .single(),
+      supabase
+        .from('player_match_stats')
+        .select('shots_on_target, goals')
+        .eq('match_id', todayPick.match_id)
+        .eq('player_id', todayPick.player_id)
+        .maybeSingle(),
+    ])
+    initialMatch = m as unknown as MatchRow | null
+    initialStats = s as unknown as StatsRow | null
+  }
+
+  // ── Determinar pick state para DashboardPickCard ──
+  const isAlive = status?.is_alive ?? false
+
+  let pickCardProps: DashboardPickCardProps
+  if (!isAlive) {
+    // ELIMINADO — no se muestra pick card
+    pickCardProps = { state: 'rest' } // dummy, no se usa (renderizamos EliminatedCard)
+  } else if (!todayMatchDay) {
+    pickCardProps = { state: 'rest' }
+  } else if (!todayPick) {
+    pickCardProps = {
+      state: 'urgent',
+      deadline: todayMatchDay.pick_window_closes_at,
+    }
+  } else {
+    // @ts-expect-error — nested relation typing from Supabase
+    const player = todayPick.players as { display_name: string; position: string } | null
+    pickCardProps = {
+      state: 'live',
+      matchId:    todayPick.match_id   as number,
+      playerId:   todayPick.player_id  as number,
+      playerName: player?.display_name ?? 'Jugador',
+      playerPosition: player?.position ?? null,
+      pickResult: todayPick.result     as string | null,
+      initialMatchStatus:  initialMatch?.status            ?? null,
+      initialMatchMinute:  initialMatch?.match_minute      ?? null,
+      initialHomeScore:    initialMatch?.home_score        ?? null,
+      initialAwayScore:    initialMatch?.away_score        ?? null,
+      initialHomeName:     initialMatch?.home_team?.name   ?? null,
+      initialAwayName:     initialMatch?.away_team?.name   ?? null,
+      initialShots:        initialStats?.shots_on_target   ?? 0,
+      initialGoals:        initialStats?.goals             ?? 0,
+    }
+  }
+
+  const username  = profile?.username  ?? 'usuario'
+  const daysSurv  = status?.days_survived         ?? 0
+  const goals     = status?.total_goals_accumulated ?? 0
+
+  return (
+    <div style={{
+      position: 'relative',
+      minHeight: '100svh',
+      background: P.bg, color: P.ink,
+      paddingTop: 0,
+    }}>
+      {/* Gradiente radial sutil en la parte superior */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: `radial-gradient(ellipse 120% 40% at 50% 0%, ${P.blue}22, transparent 60%)`,
+      }} />
+
+      {/* ── Header ── */}
+      {/* Badge izquierda + saludo/logout derecha — misma fila que el brand bar */}
+      <div style={{
+        position: 'relative', zIndex: 2,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 16px 12px',
+      }}>
+        {/* Badge "MEX · USA · CAN 2026" */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '4px 10px',
+          border: `1px solid ${P.gold}55`,
+          borderRadius: 999, background: `${P.gold}10`,
+          fontFamily: 'var(--font-jetbrains-mono), monospace',
+          fontSize: 9, letterSpacing: 1.6, textTransform: 'uppercase',
+          color: P.gold, fontWeight: 700,
+        }}>
+          <span style={{
+            width: 5, height: 5, borderRadius: '50%', background: P.red,
+            boxShadow: `0 0 0 2px ${P.red}33`,
+            animation: 'tpPulse 1.4s ease-in-out infinite',
+            display: 'inline-block',
+          }} />
+          MEX · USA · CAN 2026
+        </div>
+
+        {/* Saludo + logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 10, color: P.subDim, lineHeight: 1, marginBottom: 2 }}>Hola,</div>
+            <div style={{ fontSize: 14, color: P.ink, fontWeight: 700, lineHeight: 1 }}>{username}</div>
+          </div>
+          <LogoutButton />
+        </div>
+      </div>
+
+      {/* ── Email sin verificar (alerta) ── */}
       {!user!.email_confirmed_at && (
-        <p>
-          ⚠️ Tu email aún no está verificado. Revisa tu bandeja de entrada y
-          confirma tu cuenta para poder hacer picks.
-        </p>
+        <div style={{
+          margin: '8px 16px 0',
+          padding: '10px 14px',
+          background: `${P.gold}18`,
+          border: `1px solid ${P.gold}55`,
+          borderRadius: 10,
+          fontSize: 12, color: P.gold, lineHeight: 1.4,
+          fontFamily: 'var(--font-archivo), system-ui',
+          position: 'relative', zIndex: 2,
+        }}>
+          ⚠️ Tu email aún no está verificado. Revisa tu bandeja de entrada.
+        </div>
       )}
 
-      {/* Tournament status */}
-      <section>
-        <h2>Tu estado en el torneo</h2>
-        {status ? (
-          <div>
-            <p>
-              Estado:{' '}
-              <strong>{status.is_alive ? '🟢 Vivo' : '🔴 Eliminado'}</strong>
-            </p>
-            <p>Días sobrevividos: <strong>{status.days_survived}</strong></p>
-            <p>
-              Goles acumulados (desempate):{' '}
-              <strong>{status.total_goals_accumulated}</strong>
-            </p>
-            {!status.is_alive && status.elimination_reason && (
-              <p>
-                Razón de eliminación:{' '}
-                <strong>{formatEliminationReason(status.elimination_reason)}</strong>
-              </p>
-            )}
-          </div>
+      {/* ── Card de supervivencia ── */}
+      <SurvivalCard
+        isAlive={isAlive}
+        daysSurvived={daysSurv}
+        eliminationReason={status?.elimination_reason ?? null}
+      />
+
+      {/* ── Card del pick (o card de eliminado) ── */}
+      <div style={{ position: 'relative', zIndex: 2 }}>
+        {isAlive ? (
+          <DashboardPickCard {...pickCardProps} />
         ) : (
-          <p>No se pudo cargar tu estado. Intenta recargar la página.</p>
+          <EliminatedCard
+            daysSurvived={daysSurv}
+            reason={status?.elimination_reason ?? null}
+          />
         )}
-      </section>
+      </div>
 
-      {/* Today's pick */}
-      <section>
-        <h2>Pick de hoy</h2>
-        {!todayMatchDay ? (
-          <p>
-            No hay partidos programados hoy. El torneo comienza el{' '}
-            <strong>11 de junio de 2026</strong>.
-          </p>
-        ) : todayPick ? (
-          <div>
-            <p>
-              Tu pick:{' '}
-              {/* @ts-expect-error — nested relation typing */}
-              <strong>{todayPick.players?.display_name}</strong>
-              {/* @ts-expect-error — nested relation typing */}
-              {' '}({todayPick.players?.position})
-            </p>
-            <p>
-              Deadline:{' '}
-              <strong>
-                {new Date(todayPick.effective_deadline).toLocaleTimeString(
-                  'es-MX',
-                  { hour: '2-digit', minute: '2-digit' },
-                )}
-              </strong>
-            </p>
-            {todayPick.is_locked && <p>🔒 Pick cerrado</p>}
-
-            {/* Live stats tracker — shows once the pick deadline has passed, regardless
-                of whether the cron has run yet to set is_locked = TRUE.
-                We use effective_deadline directly so this works in local dev too. */}
-            {todayPick.effective_deadline &&
-             new Date(todayPick.effective_deadline) <= new Date() &&
-             todayPick.match_id &&
-             todayPick.player_id && (
-              <LiveMatchStats
-                matchId={todayPick.match_id as number}
-                playerId={todayPick.player_id as number}
-              />
-            )}
-
-            {todayPick.result && (
-              <p>Resultado: <strong>{formatPickResult(todayPick.result)}</strong></p>
-            )}
-          </div>
-        ) : (
-          <div>
-            <p>Aún no has hecho tu pick de hoy.</p>
-            <a href="/pick" className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700">
-              Elegir jugador →
-            </a>
-          </div>
-        )}
-      </section>
+      {/* ── Stats del torneo ── */}
+      <StatsRow days={daysSurv} goals={goals} />
     </div>
   )
 }
 
-// ──────────────────────────────────────────────
-// Helpers to translate DB values to Spanish
-// ──────────────────────────────────────────────
+// ── SurvivalCard ──────────────────────────────────────────────
 
-function formatEliminationReason(reason: string): string {
-  const reasons: Record<string, string> = {
-    no_pick: 'No hiciste pick a tiempo',
-    no_shot_on_target: 'Tu jugador no registró tiro a puerta',
-    player_did_not_play: 'Tu jugador no jugó',
-    disqualified: 'Descalificado',
-  }
-  return reasons[reason] ?? reason
+function SurvivalCard({
+  isAlive, daysSurvived, eliminationReason,
+}: {
+  isAlive: boolean
+  daysSurvived: number
+  eliminationReason: string | null
+}) {
+  const accent = isAlive ? P.green : P.red
+
+  return (
+    <div style={{
+      margin: '10px 16px 0',
+      padding: '16px 18px',
+      background: isAlive
+        ? `linear-gradient(135deg, ${P.blueDeep} 0%, ${P.panel} 100%)`
+        : `linear-gradient(135deg, #1A0E10 0%, #0F0A0F 100%)`,
+      border: `1px solid ${accent}55`,
+      borderRadius: 14,
+      position: 'relative', overflow: 'hidden',
+      zIndex: 2,
+    }}>
+      {/* Corner accents dorados */}
+      <div style={{ position: 'absolute', top: 6, left: 6, width: 14, height: 14, borderTop: `1.5px solid ${P.gold}88`, borderLeft: `1.5px solid ${P.gold}88` }} />
+      <div style={{ position: 'absolute', top: 6, right: 6, width: 14, height: 14, borderTop: `1.5px solid ${P.gold}88`, borderRight: `1.5px solid ${P.gold}88` }} />
+      <div style={{ position: 'absolute', bottom: 6, left: 6, width: 14, height: 14, borderBottom: `1.5px solid ${P.gold}88`, borderLeft: `1.5px solid ${P.gold}88` }} />
+      <div style={{ position: 'absolute', bottom: 6, right: 6, width: 14, height: 14, borderBottom: `1.5px solid ${P.gold}88`, borderRight: `1.5px solid ${P.gold}88` }} />
+
+      {/* Glow detrás */}
+      <div style={{
+        position: 'absolute', top: -40, right: -40, width: 160, height: 160,
+        background: `radial-gradient(circle, ${accent}33 0%, transparent 65%)`,
+        pointerEvents: 'none',
+      }} />
+
+      {/* Estado: VIVO / ELIMINADO */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          width: 10, height: 10, borderRadius: '50%',
+          background: accent,
+          boxShadow: `0 0 0 3px ${accent}33, 0 0 16px ${accent}99`,
+          animation: isAlive ? 'tpPulse 1.6s ease-in-out infinite' : 'none',
+          flexShrink: 0,
+        }} />
+        <div style={{
+          fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+          fontSize: 32, letterSpacing: 2.5, lineHeight: 1, color: accent,
+        }}>
+          {isAlive ? 'ESTÁS VIVO' : 'ELIMINADO'}
+        </div>
+      </div>
+
+      <div style={{
+        marginTop: 10, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase',
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontWeight: 700, color: P.gold,
+      }}>
+        DÍA {daysSurvived}
+      </div>
+
+      {!isAlive && eliminationReason && (
+        <div style={{
+          marginTop: 8, fontSize: 12, color: P.sub, lineHeight: 1.4,
+          fontFamily: 'var(--font-archivo), system-ui',
+        }}>
+          {formatEliminationReason(eliminationReason)}
+        </div>
+      )}
+    </div>
+  )
 }
 
-function formatPickResult(result: string): string {
-  const results: Record<string, string> = {
-    survived: '✅ Sobreviviste',
-    eliminated: '❌ Eliminado',
-    void_cancelled_match: '⚪ Partido cancelado (pick anulado)',
-    void_did_not_play: '⚪ Jugador no jugó (pick anulado)',
+// ── EliminatedCard (pick card para eliminados) ────────────────
+
+function EliminatedCard({
+  daysSurvived, reason,
+}: {
+  daysSurvived: number
+  reason: string | null
+}) {
+  return (
+    <div style={{
+      margin: '12px 16px 0',
+      padding: '20px 18px',
+      background: `linear-gradient(180deg, #1A0E10 0%, ${P.bgDeep} 100%)`,
+      border: `1px solid ${P.red}44`,
+      borderRadius: 14,
+      textAlign: 'center',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{
+        width: 52, height: 52, borderRadius: 26,
+        background: `${P.red}22`, border: `2px solid ${P.red}66`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 12px',
+      }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M18 6L6 18M6 6l12 12" stroke={P.red} strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <div style={{
+        fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+        fontSize: 22, letterSpacing: 1.5, color: P.red, lineHeight: 1,
+      }}>
+        CAÍSTE EN EL DÍA {daysSurvived}
+      </div>
+
+      <div style={{
+        marginTop: 8, fontSize: 12, color: P.sub, lineHeight: 1.5,
+        fontFamily: 'var(--font-archivo), system-ui',
+      }}>
+        {reason ? formatEliminationReason(reason) : 'Tu jugador no registró tiro a puerta.'}
+        {' '}Espera al próximo torneo.
+      </div>
+    </div>
+  )
+}
+
+// ── StatsRow ──────────────────────────────────────────────────
+
+function StatsRow({ days, goals }: { days: number; goals: number }) {
+  return (
+    <div style={{
+      margin: '12px 16px 0',
+      padding: '14px 8px',
+      background: P.panel,
+      border: `1px solid ${P.gold}22`,
+      borderRadius: 12,
+      display: 'flex', alignItems: 'stretch',
+      position: 'relative', overflow: 'hidden',
+      zIndex: 2,
+    }}>
+      {/* Línea decorativa superior con gradiente tricolor */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, ${P.green} 0%, ${P.gold} 50%, ${P.blue} 100%)`,
+        opacity: 0.6,
+      }} />
+
+      <StatCell value={String(days)} label="Días vivo"  accent={P.green} />
+      <div style={{ width: 1, background: P.line, margin: '4px 0' }} />
+      <StatCell value={String(goals)} label="Goles acumulados" accent={P.gold} />
+    </div>
+  )
+}
+
+function StatCell({ value, label, accent }: { value: string; label: string; accent: string }) {
+  return (
+    <div style={{ flex: 1, textAlign: 'center', padding: '4px' }}>
+      <div style={{
+        fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+        fontSize: 30, lineHeight: 1, color: accent, letterSpacing: 0.5,
+      }}>
+        {value}
+      </div>
+      <div style={{
+        marginTop: 4,
+        fontFamily: 'var(--font-archivo-narrow), system-ui, sans-serif',
+        fontSize: 9.5, letterSpacing: 1.2, textTransform: 'uppercase',
+        color: P.subDim, fontWeight: 600,
+      }}>
+        {label}
+      </div>
+    </div>
+  )
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+
+function formatEliminationReason(reason: string): string {
+  const map: Record<string, string> = {
+    no_pick:            'No hiciste pick a tiempo.',
+    no_shot_on_target:  'Tu jugador no registró tiro a puerta.',
+    player_did_not_play:'Tu jugador no jugó.',
+    disqualified:       'Cuenta descalificada.',
   }
-  return results[result] ?? result
+  return map[reason] ?? reason
 }

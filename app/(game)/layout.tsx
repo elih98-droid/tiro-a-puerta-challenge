@@ -1,81 +1,61 @@
-import { createClient } from '@/lib/supabase/server'
-import { LogoutButton } from '@/components/layout/logout-button'
-import { NavLinks } from '@/components/layout/nav-links'
 import Link from 'next/link'
+import { NavLinks } from '@/components/layout/nav-links'
+import { TPMark } from '@/components/brand/tp-mark'
 
 /**
- * Layout for all game pages (/dashboard, /pick, /my-picks, /leaderboard).
+ * Layout del juego — shell oscuro compartido por todas las páginas del juego
+ * (/dashboard, /pick, /my-picks, /leaderboard).
  *
- * Structure:
- *   - Top bar: brand name, username (or "Iniciar sesión"), logout button
- *   - Tab bar: section links with active highlight (NavLinks — Client Component)
- *   - Page content
+ * Incluye:
+ *   - Barra de marca superior fija (TPMark + wordmark) — identidad visual en todas las pestañas
+ *   - Nav inferior fijo (NavLinks)
  *
- * This layout handles both authenticated AND unauthenticated users.
- * Most pages here are protected (proxy redirects to /login before reaching
- * this layout). The exception is /leaderboard, which is publicly accessible.
- * For unauthenticated visitors the top bar shows a login link instead of
- * the username and logout button.
+ * El nav inferior es un Client Component (necesita usePathname).
+ * El layout en sí es un Server Component.
  *
- * Visual design here is intentionally functional, not final.
- * A full redesign (branding, colors, typography) is planned in tarea 8.
+ * paddingBottom: 88px en el contenido para que no quede tapado por el nav fijo.
  */
-export default async function GameLayout({
+export default function GameLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Fetch username only when there is a logged-in user.
-  let username: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('username')
-      .eq('id', user.id)
-      .single()
-    username = profile?.username ?? user.email ?? null
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      {/* Top bar — brand + user info */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-          <span className="font-bold text-gray-900 text-sm tracking-tight">
-            Tiro a Puerta 2026
-          </span>
-          <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <span className="text-sm text-gray-500">{username}</span>
-                <LogoutButton />
-              </>
-            ) : (
-              <Link
-                href="/login"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Iniciar sesión
-              </Link>
-            )}
+    <div style={{
+      minHeight: '100svh',
+      background: '#0A0E1A',
+      color: '#fff',
+      paddingBottom: 88,
+    }}>
+      {/* ── Barra de marca superior ───────────────────────────────────────── */}
+      <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+          padding: '14px 16px 14px',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          background: 'linear-gradient(180deg, rgba(42,57,141,0.18) 0%, transparent 100%)',
+        }}>
+          <TPMark size={44} showGoalLine={false} />
+          <div>
+            <div style={{
+              fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+              fontSize: 22, letterSpacing: 2.2, color: '#fff', lineHeight: 1,
+            }}>
+              TIRO A PUERTA
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+              fontSize: 12, letterSpacing: 3.5, color: '#C9A84C', lineHeight: 1,
+              marginTop: 3,
+            }}>
+              CHALLENGE
+            </div>
           </div>
         </div>
-      </header>
+      </Link>
 
-      {/* Tab bar — section navigation */}
-      <div className="max-w-3xl mx-auto px-0 sm:px-4">
-        <NavLinks />
-      </div>
-
-      {/* Page content */}
-      <main className="max-w-3xl mx-auto">
-        {children}
-      </main>
-
+      {children}
+      <NavLinks />
     </div>
   )
 }

@@ -9,7 +9,19 @@ export function LogoutButton() {
     <form action={signOut}>
       <button
         type="submit"
-        className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
+        style={{
+          background: 'transparent',
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderRadius: 6,
+          padding: '4px 10px',
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.45)',
+          cursor: 'pointer',
+          fontFamily: 'var(--font-archivo-narrow), system-ui, sans-serif',
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+          fontWeight: 600,
+        }}
       >
         Salir
       </button>

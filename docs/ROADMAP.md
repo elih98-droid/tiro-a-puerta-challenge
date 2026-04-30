@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 27 de abril de 2026 (minuto real del partido en tracker en vivo)
+**Última actualización:** 29 de abril de 2026 (tarea 8 completa — todas las pantallas del juego rediseñadas)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -171,12 +171,18 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 
 ### 🟡 PRIORIDAD MEDIA — Diseño visual y comunicaciones
 
-#### 8. Diseño visual con Claude Design
-*(Se ataca una vez que la mecánica core esté funcional: auth + picks + leaderboard.)*
-- [ ] Definir branding: paleta de colores, tipografía, logo (decisión abierta).
-- [ ] Usar Claude Design para generar los componentes visuales principales (páginas de login/signup, dashboard, selector de pick, leaderboard).
-- [ ] Aplicar el diseño sobre las páginas funcionales ya construidas.
-- [ ] Revisar responsividad (mobile-first — la mayoría de usuarios entrarán desde el celular).
+#### 8. Diseño visual con Claude Design 🔄 En progreso
+- [x] **Branding definido:** paleta (azul/rojo/verde/dorado), tipografía (Bebas Neue / Archivo / Archivo Narrow / JetBrains Mono), logo Dirección 3 "El Momento" (balón Telstar + líneas de movimiento). Documentado en `CLAUDE.md §Sistema de diseño`.
+- [x] **Sistema de diseño base:** fuentes en `app/layout.tsx`, CSS variables + keyframes en `globals.css`, componente `TPMark` / `TPWordmark` / `TPLockup` en `components/brand/tp-mark.tsx`.
+- [x] Arrancar diseños con Claude Design — enfoque **mobile-first**. Bundle exportado el 29 abr con: Login (4 variantes), Dashboard (4 artboards + desktop), Pick del día (3 artboards), Logo (3 direcciones).
+- [x] **Login D implementado** en `components/auth/login-form.tsx`. OAuth buttons con logo Google real en `components/auth/oauth-buttons.tsx`.
+- [x] **Dashboard implementado** — 4 escenarios: VIVO·Pick urgente (countdown + CTA), VIVO·Pick en vivo (stats + polling), VIVO·Sin partidos (luna + RACHA PROTEGIDA), ELIMINADO. Nav inferior fijo rediseñado (`nav-links.tsx`). Layout del juego simplificado a shell oscuro + nav. `DashboardPickCard` (Client Component) en `components/game/dashboard-pick-card.tsx`.
+- [x] **Pick del día implementado** — 3 estados: vacío/eligiendo, pick planeado (modificable), pick bloqueado/en vivo. Rediseño completo de `pick-day-nav.tsx`, `pick-match-card.tsx`, `pick-client.tsx` y `pick/page.tsx`. Cards oscuras por partido con 2 columnas de jugadores, position badges (POR/DEF/MED/DEL con colores), countdown inline, badge EN VIVO con minuto real, confirmed pick card verde (con `LiveMatchStats` integrado en el estado bloqueado), panel de confirmación sticky oscuro con CTA signature.
+- [x] **`/my-picks` implementado** (diseño propio) — cards con borde de color por resultado, position badges, stats post-evaluación, pill de jugadores quemados.
+- [x] **`/leaderboard` implementado** (diseño propio) — tabla de ranking con líder destacado en dorado, fila propia en azul/dorado, sección de eliminados separada, columnas Días/Goles/Estado.
+- [x] **Barra de marca global** en `app/(game)/layout.tsx` — `TPMark` + wordmark centrado en todas las pestañas, clickeable → `/dashboard`.
+- [ ] Signup — pendiente diseñar e implementar.
+- [ ] Revisar responsividad desktop (agregar breakpoints sobre el diseño mobile).
 
 ### 🟡 PRIORIDAD MEDIA — Comunicaciones y UX completa
 
@@ -255,6 +261,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Mecánica de picks | ✅ Completo |
 | Mis picks (/my-picks) | ✅ Completo |
 | Tracker en vivo del pick | ✅ Completo |
+| Diseño visual (tarea 8) | 🔄 En progreso — Login ✅, Dashboard ✅, Pick pendiente |
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ⏳ Pendiente |

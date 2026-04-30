@@ -75,8 +75,7 @@ export default async function PickPage({
   // Still render the nav so the user can navigate to the nearest match day.
   if (!matchDay) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Pick del día</h1>
+      <>
         <PickDayNav
           matchDate={targetDate}
           dayNumber={0}
@@ -84,17 +83,21 @@ export default async function PickPage({
           prevDate={prevDayRow?.match_date ?? null}
           nextDate={nextDayRow?.match_date ?? null}
         />
-        <p className="text-gray-500 mt-4">
+        <p style={{
+          margin: '16px',
+          fontSize: 13, color: 'rgba(255,255,255,0.4)',
+          fontFamily: 'var(--font-archivo), sans-serif',
+        }}>
           No hay partidos programados para el {targetDate}.
         </p>
-      </div>
+      </>
     )
   }
 
   // ── 4. Matches for this day ────────────────────────────────────────────────
   const { data: rawMatches } = await supabase
     .from('matches')
-    .select('id, kickoff_time, pick_deadline, status, home_team_id, away_team_id')
+    .select('id, kickoff_time, pick_deadline, status, home_team_id, away_team_id, match_minute, home_score, away_score')
     .eq('match_day_id', matchDay.id)
     .order('kickoff_time', { ascending: true })
 
@@ -137,6 +140,9 @@ export default async function PickPage({
       players: allPlayers.filter(
         p => p.team_id === m.home_team_id || p.team_id === m.away_team_id
       ),
+      match_minute: m.match_minute ?? null,
+      home_score:   m.home_score ?? null,
+      away_score:   m.away_score ?? null,
     }))
 
   // ── 6. Current pick for this day ───────────────────────────────────────────
@@ -180,10 +186,7 @@ export default async function PickPage({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Pick del día</h1>
-
+    <>
       <PickDayNav
         matchDate={matchDay.match_date}
         dayNumber={matchDay.day_number}
@@ -202,6 +205,6 @@ export default async function PickPage({
         allPlayers={allPlayers}
         isToday={isToday}
       />
-    </div>
+    </>
   )
 }

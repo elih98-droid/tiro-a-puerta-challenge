@@ -10,9 +10,7 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <main>
-      {children}
-    </main>
-  )
+  // Auth pages handle their own background (dark, full-bleed).
+  // The <main> wrapper is minimal — no padding, no centering imposed here.
+  return <main className="flex-1">{children}</main>
 }

@@ -223,7 +223,38 @@ curl http://localhost:3000/api/cron/evaluate-picks      # lockea picks y evalúa
 
 ### Reset manual de usuario de prueba (solo para testing)
 
-Para resetear `elias_test` después de una eliminación durante pruebas, correr en el SQL Editor de Supabase **después** de que `evaluate-picks` haya procesado el día:
+⚠️ Fix manual exclusivo para pruebas. No existe en la app ni aplica a usuarios reales.
+
+**Regla clave:** `evaluate-picks` solo procesa días con `is_processed = FALSE`. Si un día ya fue procesado, el cron lo ignora — los picks de ese día no vuelven a evaluarse aunque se limpien en la DB.
+
+#### Opción A — Forzar "survived" directamente (recomendada)
+
+Usar cuando el jugador elegido genuinamente no tiró (Hudson-Odoi, Bruno Fernandes, etc.) y queremos que el usuario siga vivo para pruebas. No requiere correr el cron después.
+
+```sql
+-- Revive al usuario (ajusta days_survived y total_goals_accumulated según el estado real)
+UPDATE user_status SET
+  is_alive                   = TRUE,
+  eliminated_on_match_day_id = NULL,
+  elimination_reason         = NULL
+WHERE user_id = (SELECT id FROM users WHERE username = 'elias_test');
+
+-- Fuerza "survived" en el pick del día (reemplaza la fecha)
+UPDATE user_picks SET
+  result                = 'survived',
+  shots_on_target_count = 1,
+  goals_scored          = 0,
+  processed_at          = NOW(),
+  is_locked             = TRUE
+WHERE user_id = (SELECT id FROM users WHERE username = 'elias_test')
+  AND match_day_id = (SELECT id FROM match_days WHERE match_date = 'YYYY-MM-DD');
+
+-- El día ya tiene is_processed = TRUE — déjalo así para que el cron no lo retoque.
+```
+
+#### Opción B — Re-evaluar el día desde cero
+
+Usar cuando queremos que `evaluate-picks` procese el día de nuevo (ej: cambiamos el pick a un jugador que sí tiró).
 
 ```sql
 -- Revive al usuario
@@ -242,9 +273,18 @@ UPDATE user_picks SET
   is_locked             = FALSE
 WHERE user_id = (SELECT id FROM users WHERE username = 'elias_test')
   AND match_day_id = (SELECT id FROM match_days WHERE match_date = 'YYYY-MM-DD');
+
+-- ⚠️ OBLIGATORIO: desmarcar el día o evaluate-picks lo saltará
+UPDATE match_days
+SET is_processed = FALSE
+WHERE match_date = 'YYYY-MM-DD';
 ```
 
-⚠️ Fix manual exclusivo para pruebas. No existe en la app ni aplica a usuarios reales.
+Después correr el cron:
+
+```bash
+curl http://localhost:3000/api/cron/evaluate-picks
+```
 
 ### Comportamiento validado: jugador no convocado
 
@@ -296,6 +336,73 @@ Al abrir el proyecto, Claude Code idealmente:
 - **v1.7 (abril 2026):** tracker en vivo del pick (tarea 6.6). Componente `LiveMatchStats` en `/pick` y `/dashboard`: marcador, badge EN VIVO parpadeante, tiros a puerta, goles, minutos jugados, indicador de supervivencia ✅/⚠️ (visible aunque el jugador no haya sido convocado). Fix dashboard: query de match day por fecha en lugar de por ventana de picks (antes desaparecía durante el partido).
 - **v1.8 (abril 2026):** validación de caso borde — jugador no convocado (sin fila en `player_match_stats`) resulta en eliminación correcta (`void_did_not_play` / `player_did_not_play`). Confirmado el 27 de abril con C. Hudson-Odoi. Aclaración importante documentada: en local, `evaluate-picks` debe invocarse manualmente después del partido; sin esa llamada el pick queda pendiente indefinidamente.
 - **v1.9 (abril 2026):** minuto real del partido en el tracker en vivo. Columna `match_minute INTEGER` agregada a `matches` (migración `20260427000000`). Worker `sync-live-matches` escribe `fixture.status.elapsed` en cada sync; `LiveMatchStats` lo lee directo de DB. Eliminada la función `getApproxMinute` del cliente.
+- **v2.0 (abril 2026):** documentación del comportamiento de `is_processed` en resets de prueba. Snippet de reset expandido a dos opciones: Opción A (forzar `survived` directo, sin re-evaluar — para jugadores que genuinamente no tiraron) y Opción B (limpiar pick + desmarcar día + re-correr cron). Tarea 8 iniciada: diseño visual mobile-first con Claude Design en progreso.
+- **v2.1 (abril 2026):** diseño Login D implementado desde bundle de Claude Design. Sistema de diseño de marca establecido: fuentes, paleta CSS vars, `TPMark` SVG, keyframes globales.
+- **v2.2 (abril 2026):** dashboard rediseñado con los 4 escenarios del juego. Nav inferior fijo con iconos SVG (`nav-links.tsx`). Game layout simplificado a shell oscuro + bottom nav. `DashboardPickCard` (Client Component) maneja countdown (urgente) y polling de stats en vivo (60s). `LogoutButton` restyled para dark mode. Animación `tpUrgentPulse` añadida a globals.css. Sistema de diseño de marca establecido: fuentes (Bebas Neue, Archivo, Archivo Narrow, JetBrains Mono) añadidas a `app/layout.tsx` como CSS variables; paleta y keyframes globales en `globals.css`; componente `TPMark` (balón Telstar SVG, Dirección 3) en `components/brand/tp-mark.tsx` — reutilizable en todas las pantallas. Login page completamente rediseñada con la identidad visual aprobada. Flujo de exportación Claude Design → bundle tar → implementación en Next.js establecido y funcional.
+- **v2.3 (abril 2026):** `/pick` rediseñado (tarea 8). Bundle Claude Design Pick importado. `pick-day-nav.tsx` rediseñado: header oscuro con Bebas Neue y flechas cuadradas. `pick-match-card.tsx` reescrito: cards oscuras por partido (`#11162A`), badge EN VIVO parpadeante con minuto real, score en vivo, countdown inline con colores, 2 columnas de jugadores con position badges POR/DEF/MED/DEL (colores propios), player row con estados: selected (verde), burned (tachado), locked (candado). Tipo `MatchData` expandido con `match_minute`, `home_score`, `away_score`. `pick-client.tsx` rediseñado: `PickConfirmedCard` (planeado o bloqueado + `LiveMatchStats` integrado), position filter chips estilo píldoras con punto de color, confirm panel sticky oscuro con CTA signature (gradiente azul + borde gold). `pick/page.tsx`: container cambiado a dark full-bleed (sin `max-w-3xl` blanco), query de matches expandida.
+- **v2.4 (abril 2026):** `/my-picks` rediseñado. Diseño propio (sin bundle Claude Design). Cards oscuras `#181C36` con borde izquierdo de color según resultado (verde/rojo/gold/dim). Header: "Mis Picks" en Bebas Neue + pill roja de jugadores quemados. Por card: día/fecha en gold JetBrains Mono, nombre en Bebas Neue 21px, position badge con colores, team name, stats de tiro/goles (verde si >0, gold si gol) solo post-evaluación. Status badge en JetBrains Mono (SOBREVIVISTE/ELIMINADO/EN ESPERA parpadeante/PENDIENTE/ANULADO). Empty state con CTA azul-gold.
+- **v2.5 (abril 2026):** `/leaderboard` rediseñado. Diseño propio. Header: "Ranking" en Bebas Neue + pills de conteo (participantes/vivos/eliminados). Columnas: # · Jugador · Días · Goles · Estado. Fila líder (#1): gradiente dorado, borde dorado, nombre en `#E8C766`, número Bebas Neue 24px con glow. Fila usuario actual: gradiente azul, borde dorado, badge "TÚ". Eliminados separados con divisor "ELIMINADOS" + opacity 55%. Días en verde, goles en gold, badge ● VIVO / ✕ ELIM. en JetBrains Mono.
+- **v2.6 (abril 2026):** barra de marca global en game layout. `app/(game)/layout.tsx` ahora incluye header superior fijo con `TPMark` (44px, con halo) + "TIRO A PUERTA / CHALLENGE" centrado, gradiente azul sutil, borde inferior. El logo es `<Link href="/dashboard">` — clickeable en todas las pestañas. Dashboard: TPMark eliminado del header de página (ya está en el layout), badge MEX·USA·CAN y saludo/logout en una sola fila `space-between`. Pick: padding del nav de fecha ajustado a 16px para alinear con el brand bar.
+
+---
+
+## Sistema de diseño (marca aprobada en Claude Design)
+
+Paleta, tipografía y componentes decididos en sesión de diseño con Claude Design (29 abr 2026). **Dirección 3 "El Momento"** aprobada como identidad oficial.
+
+### Paleta de colores
+
+| Token | Hex | Uso |
+|-------|-----|-----|
+| `--tp-blue` | `#2A398D` | Primario, CTAs, navbar |
+| `--tp-blue-deep` | `#1B2566` | Gradiente del botón principal |
+| `--tp-red` | `#E61D25` | Alertas, EN VIVO, eliminación |
+| `--tp-green` | `#3CAC3B` | Éxito, sobreviviste, confirmación |
+| `--tp-gold` | `#C9A84C` | Acento especial, líder, bordes, wordmark "CHALLENGE" |
+| `--tp-ink` | `#0B0D18` | Fondo principal (near black) |
+| `--tp-ink-panel` | `#181C36` | Fondo de cards y campos |
+| `--tp-ink-line` | `rgba(255,255,255,0.08)` | Separadores y bordes sutiles |
+
+### Tipografía
+
+| Variable CSS | Fuente | Uso |
+|---|---|---|
+| `--font-bebas-neue` | Bebas Neue 400 | Títulos grandes, wordmark, números de estadísticas |
+| `--font-archivo` | Archivo 400–900 | Cuerpo, UI, botones |
+| `--font-archivo-narrow` | Archivo Narrow 500–700 | Labels de campos (uppercase) |
+| `--font-jetbrains-mono` | JetBrains Mono 400–700 | Badges meta, divisores |
+
+### Componentes de marca (`components/brand/tp-mark.tsx`)
+
+- **`TPMark`** — Balón Telstar SVG (Dirección 3). Props: `size`, `showMotionLines`, `showGoalLine`, `showHalo`.
+- **`TPWordmark`** — "TIRO A PUERTA / CHALLENGE". Props: `color`, `goldColor`, `size` (xl/lg/md/sm), `align`.
+- **`TPLockup`** — Mark + Wordmark juntos (horizontal o vertical). Props: `size`, `stack`, `dark`.
+
+### Animaciones globales (en `globals.css`)
+
+- `tpPulse` — fade in/out para el punto rojo "EN VIVO" y badges de alerta.
+- `spin` — rotación continua para el spinner de loading.
+- `pickLivePulse` — glow pulsante para cards de pick en vivo.
+
+### Diseños aprobados en Claude Design
+
+| Pantalla | Estado | Archivo de diseño |
+|---|---|---|
+| Login (D — Mezcla) | ✅ Implementado | `components/auth/login-form.tsx` |
+| Dashboard (v2, 4 escenarios) | ✅ Implementado | `app/(game)/dashboard/page.tsx` + `components/game/dashboard-pick-card.tsx` |
+| Pick del día (3 artboards) | ✅ Implementado | `components/game/pick-client.tsx`, `pick-match-card.tsx`, `pick-day-nav.tsx` |
+| Mis Picks | ✅ Implementado (diseño propio) | `app/(game)/my-picks/page.tsx` |
+| Leaderboard / Ranking | ✅ Implementado (diseño propio) | `app/(game)/leaderboard/page.tsx` |
+| Logo (Dirección 3) | 🎨 Diseño aprobado, pendiente implementar | Claude Design bundle |
+
+### Notas de implementación del diseño
+
+- El diseño usa **inline styles** para valores específicos del sistema visual (gradientes, sombras, colores exactos). Tailwind se usa para estructura/layout.
+- Los campos de formulario usan `inkPanel` (`#181C36`) como fondo filled, con borde dorado en focus y `box-shadow` de glow.
+- El botón CTA principal: `linear-gradient(blue → blueDeep)` + `border: 1.5px solid gold` — esta combinación es la "firma" del diseño D.
+- **Barra de marca global** en `app/(game)/layout.tsx`: `TPMark` 44px + wordmark centrado, clickeable → `/dashboard`. Presente en todas las pestañas del juego. No duplicar en páginas individuales.
+- **Pantallas sin bundle Claude Design** (`/my-picks`, `/leaderboard`): diseño propio aplicando el sistema de diseño establecido. Patrón: cards `#181C36`, borde izquierdo de color para estado, texto en Bebas Neue / JetBrains Mono / Archivo.
+- Las HUD corners (brackets dorados en las 4 esquinas) son un elemento visual recurrente en todas las pantallas.
 
 ---
 

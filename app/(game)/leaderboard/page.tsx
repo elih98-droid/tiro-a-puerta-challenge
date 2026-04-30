@@ -10,22 +10,14 @@ import { createClient } from '@/lib/supabase/server'
  *   2. Then by total goals accumulated DESC (tiebreaker)
  *   3. Then by days survived DESC (secondary tiebreaker)
  *
- * Pick visibility (game-rules.md §10.1):
- *   Picks are private until their deadline passes. RLS enforces this at the
- *   DB level — user_picks rows with is_locked = FALSE from other users are
- *   not returned. No extra filtering needed here.
- *
- * This is a Server Component — the ranking is the same for everyone,
- * no client state needed. We do highlight the current user's row.
+ * This is a Server Component — ranking is the same for everyone.
+ * We highlight the current user's row.
  */
+
 export default async function LeaderboardPage() {
   const supabase = await createClient()
-  // user may be null — leaderboard is publicly accessible without auth.
   const { data: { user } } = await supabase.auth.getUser()
 
-  // ── 1. Fetch all participants ranked ───────────────────────────────────────
-  // We join user_status → users to get the username.
-  // Multiple .order() calls stack as ORDER BY clauses.
   const { data: rows, error } = await supabase
     .from('user_status')
     .select(`
@@ -36,163 +28,336 @@ export default async function LeaderboardPage() {
       elimination_reason,
       users ( username )
     `)
-    .order('is_alive', { ascending: false })
-    .order('total_goals_accumulated', { ascending: false })
-    .order('days_survived', { ascending: false })
+    .order('is_alive',                  { ascending: false })
+    .order('total_goals_accumulated',   { ascending: false })
+    .order('days_survived',             { ascending: false })
 
   if (error || !rows) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Leaderboard</h1>
-        <p className="text-gray-500">No se pudo cargar el leaderboard. Intenta de nuevo.</p>
+      <div style={{ margin: '24px 16px' }}>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+          No se pudo cargar el leaderboard. Intenta de nuevo.
+        </p>
       </div>
     )
   }
 
-  // ── 2. Compute summary counts ──────────────────────────────────────────────
   const totalParticipants = rows.length
-  const aliveCount = rows.filter(r => r.is_alive).length
+  const aliveCount        = rows.filter(r => r.is_alive).length
+  const eliminatedCount   = totalParticipants - aliveCount
 
-  // ── 3. Assign rank — only alive users get a numeric rank.
-  //    Eliminated users are shown below but their rank is shown as '—'.
+  // Assign numeric rank only to alive users
   let aliveRank = 0
   const ranked = rows.map(row => {
     if (row.is_alive) aliveRank++
     return { ...row, rank: row.is_alive ? aliveRank : null }
   })
 
+  const aliveRows     = ranked.filter(r => r.is_alive)
+  const eliminatedRows = ranked.filter(r => !r.is_alive)
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <>
+      {/* ── Page header ──────────────────────────────────────────────────── */}
+      <div style={{ padding: '16px 16px 4px' }}>
+        <div style={{
+          fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+          fontSize: 32, letterSpacing: 1.5, color: '#fff', lineHeight: 1,
+          marginBottom: 8,
+        }}>
+          Ranking
+        </div>
 
-      {/* Header */}
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Leaderboard</h1>
-      <p className="text-sm text-gray-400 mb-6">
-        {totalParticipants} participante{totalParticipants !== 1 ? 's' : ''}
-        {' · '}
-        <span className="text-green-600 font-medium">{aliveCount} vivo{aliveCount !== 1 ? 's' : ''}</span>
-        {aliveCount < totalParticipants && (
-          <>
-            {' · '}
-            <span className="text-red-500 font-medium">
-              {totalParticipants - aliveCount} eliminado{(totalParticipants - aliveCount) !== 1 ? 's' : ''}
-            </span>
-          </>
-        )}
-      </p>
+        {/* Stats pills */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Pill label={`${totalParticipants} participante${totalParticipants !== 1 ? 's' : ''}`} color="rgba(255,255,255,0.45)" />
+          <Pill label={`${aliveCount} vivo${aliveCount !== 1 ? 's' : ''}`} color="#3CAC3B" />
+          {eliminatedCount > 0 && (
+            <Pill label={`${eliminatedCount} eliminado${eliminatedCount !== 1 ? 's' : ''}`} color="#E61D25" />
+          )}
+        </div>
+      </div>
 
-      {/* Empty state */}
-      {rows.length === 0 && (
-        <p className="text-gray-500">Aún no hay participantes registrados.</p>
-      )}
-
-      {/* Ranking table */}
+      {/* ── Column headers ───────────────────────────────────────────────── */}
       {rows.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">
-                  #
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Jugador
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Estado
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Días
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Goles
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {ranked.map((row) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const username = (row.users as any)?.username ?? '—'
-                const isCurrentUser = !!user && row.user_id === user.id
-
-                return (
-                  <tr
-                    key={row.user_id}
-                    className={[
-                      'transition-colors',
-                      isCurrentUser
-                        ? 'bg-blue-50'
-                        : row.is_alive
-                          ? 'bg-white hover:bg-gray-50'
-                          : 'bg-gray-50 opacity-60',
-                    ].join(' ')}
-                  >
-                    {/* Rank */}
-                    <td className="px-4 py-3 text-gray-400 font-medium">
-                      {row.rank ?? '—'}
-                    </td>
-
-                    {/* Username */}
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {username}
-                      {isCurrentUser && (
-                        <span className="ml-2 text-xs text-blue-500 font-normal">tú</span>
-                      )}
-                    </td>
-
-                    {/* Status badge */}
-                    <td className="px-4 py-3 text-center">
-                      {row.is_alive ? (
-                        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                          Vivo
-                        </span>
-                      ) : (
-                        <span
-                          className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600"
-                          title={formatEliminationReason(row.elimination_reason)}
-                        >
-                          Eliminado
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Days survived */}
-                    <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
-                      {row.days_survived}
-                    </td>
-
-                    {/* Goals accumulated */}
-                    <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
-                      {row.total_goals_accumulated}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          padding: '12px 16px 6px',
+          fontFamily: 'var(--font-jetbrains-mono), monospace',
+          fontSize: 8.5, letterSpacing: 1.4, textTransform: 'uppercase',
+          color: 'rgba(255,255,255,0.3)', fontWeight: 700,
+        }}>
+          <div style={{ width: 36 }}>#</div>
+          <div style={{ flex: 1 }}>Jugador</div>
+          <div style={{ width: 40, textAlign: 'right' }}>Días</div>
+          <div style={{ width: 44, textAlign: 'right' }}>Goles</div>
+          <div style={{ width: 76, textAlign: 'right' }}>Estado</div>
         </div>
       )}
 
-      {/* Legend */}
-      <p className="text-xs text-gray-400 mt-4">
-        Ordenado por: vivos primero → goles acumulados → días sobrevividos.
-        Goles acumulados se usan como desempate final (regla §5.1).
-      </p>
+      {/* ── Empty state ──────────────────────────────────────────────────── */}
+      {rows.length === 0 && (
+        <div style={{
+          margin: '24px 16px', padding: '32px 24px',
+          background: '#181C36', border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 12, textAlign: 'center',
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+            fontSize: 18, letterSpacing: 1, color: 'rgba(255,255,255,0.35)',
+          }}>
+            AÚN NO HAY PARTICIPANTES
+          </div>
+        </div>
+      )}
 
+      {/* ── Alive rows ───────────────────────────────────────────────────── */}
+      {aliveRows.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '0 16px' }}>
+          {aliveRows.map(row => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const username      = (row.users as any)?.username ?? '—'
+            const isCurrentUser = !!user && row.user_id === user.id
+            const isLeader      = row.rank === 1
+
+            return (
+              <RankRow
+                key={row.user_id}
+                rank={row.rank}
+                username={username}
+                daysSurvived={row.days_survived}
+                goals={row.total_goals_accumulated}
+                isAlive={true}
+                isCurrentUser={isCurrentUser}
+                isLeader={isLeader}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Eliminated divider ───────────────────────────────────────────── */}
+      {eliminatedRows.length > 0 && (
+        <>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '18px 16px 10px',
+          }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }}/>
+            <div style={{
+              fontFamily: 'var(--font-jetbrains-mono), monospace',
+              fontSize: 8.5, letterSpacing: 1.6, color: 'rgba(230,29,37,0.5)',
+              fontWeight: 700, textTransform: 'uppercase',
+            }}>
+              Eliminados
+            </div>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }}/>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '0 16px 24px' }}>
+            {eliminatedRows.map(row => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const username      = (row.users as any)?.username ?? '—'
+              const isCurrentUser = !!user && row.user_id === user.id
+
+              return (
+                <RankRow
+                  key={row.user_id}
+                  rank={null}
+                  username={username}
+                  daysSurvived={row.days_survived}
+                  goals={row.total_goals_accumulated}
+                  isAlive={false}
+                  isCurrentUser={isCurrentUser}
+                  isLeader={false}
+                />
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ── Legend ───────────────────────────────────────────────────────── */}
+      {rows.length > 0 && (
+        <div style={{
+          padding: '0 16px 24px',
+          fontFamily: 'var(--font-jetbrains-mono), monospace',
+          fontSize: 9, letterSpacing: 0.8,
+          color: 'rgba(255,255,255,0.2)',
+        }}>
+          Orden: vivos primero → goles acumulados → días sobrevividos (§5.1)
+        </div>
+      )}
+    </>
+  )
+}
+
+// ─── RankRow ──────────────────────────────────────────────────────────────────
+
+function RankRow({
+  rank,
+  username,
+  daysSurvived,
+  goals,
+  isAlive,
+  isCurrentUser,
+  isLeader,
+}: {
+  rank: number | null
+  username: string
+  daysSurvived: number
+  goals: number
+  isAlive: boolean
+  isCurrentUser: boolean
+  isLeader: boolean
+}) {
+  // Visual style varies by state, priority: leader > currentUser > alive > eliminated
+  let bg      = '#181C36'
+  let border  = '1px solid rgba(255,255,255,0.06)'
+  let opacity = 1
+
+  if (isLeader) {
+    bg     = 'linear-gradient(135deg, rgba(201,168,76,0.12) 0%, #11162A 100%)'
+    border = '1px solid rgba(201,168,76,0.35)'
+  } else if (isCurrentUser) {
+    bg     = 'linear-gradient(135deg, rgba(42,57,141,0.35) 0%, #11162A 100%)'
+    border = '1px solid rgba(201,168,76,0.4)'
+  } else if (!isAlive) {
+    bg      = 'rgba(255,255,255,0.02)'
+    border  = '1px solid rgba(255,255,255,0.04)'
+    opacity = 0.55
+  }
+
+  const rankColor   = isLeader ? '#C9A84C' : isCurrentUser ? '#7B93E8' : 'rgba(255,255,255,0.3)'
+  const nameColor   = isAlive ? '#fff' : 'rgba(255,255,255,0.55)'
+  const statsColor  = isAlive ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)'
+  const rankFontSize = isLeader ? 24 : 16
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      padding: '11px 12px',
+      background: bg, border, borderRadius: 10,
+      opacity,
+    }}>
+      {/* Rank number */}
+      <div style={{
+        width: 36, flexShrink: 0,
+        fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+        fontSize: rankFontSize, letterSpacing: 0.5,
+        color: rankColor, lineHeight: 1,
+        textShadow: isLeader ? '0 0 12px rgba(201,168,76,0.4)' : 'none',
+      }}>
+        {rank ?? '—'}
+      </div>
+
+      {/* Username + "tú" badge */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-archivo), sans-serif',
+            fontSize: isLeader ? 15 : 13.5,
+            fontWeight: isLeader ? 800 : 600,
+            color: isLeader ? '#E8C766' : nameColor,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {username}
+          </span>
+          {isCurrentUser && (
+            <span style={{
+              fontFamily: 'var(--font-jetbrains-mono), monospace',
+              fontSize: 8, letterSpacing: 1, fontWeight: 700,
+              color: '#C9A84C',
+              background: 'rgba(201,168,76,0.12)',
+              border: '1px solid rgba(201,168,76,0.3)',
+              borderRadius: 3, padding: '1px 5px',
+              flexShrink: 0,
+            }}>
+              TÚ
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Days */}
+      <div style={{
+        width: 40, textAlign: 'right', flexShrink: 0,
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 12, fontWeight: 700,
+        color: isAlive ? '#3CAC3B' : statsColor,
+      }}>
+        {daysSurvived}
+      </div>
+
+      {/* Goals */}
+      <div style={{
+        width: 44, textAlign: 'right', flexShrink: 0,
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 12, fontWeight: 700,
+        color: goals > 0 ? '#C9A84C' : statsColor,
+      }}>
+        {goals}
+      </div>
+
+      {/* Status badge */}
+      <div style={{ width: 76, textAlign: 'right', flexShrink: 0 }}>
+        {isAlive ? (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontSize: 8.5, letterSpacing: 1, fontWeight: 700,
+            color: '#3CAC3B',
+          }}>
+            <span style={{
+              width: 5, height: 5, borderRadius: 3, background: '#3CAC3B',
+              display: 'inline-block', flexShrink: 0,
+            }}/>
+            VIVO
+          </span>
+        ) : (
+          <span style={{
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontSize: 8.5, letterSpacing: 1, fontWeight: 700,
+            color: 'rgba(230,29,37,0.55)',
+          }}>
+            ✕ ELIM.
+          </span>
+        )}
+      </div>
     </div>
   )
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────────────────────────────────────
+// ─── Pill ─────────────────────────────────────────────────────────────────────
 
+function Pill({ label, color }: { label: string; color: string }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '3px 9px', borderRadius: 999,
+      background: `${color}14`,
+      border: `1px solid ${color}44`,
+      fontFamily: 'var(--font-jetbrains-mono), monospace',
+      fontSize: 9.5, letterSpacing: 1, fontWeight: 700,
+      color,
+    }}>
+      {label}
+    </span>
+  )
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatEliminationReason(reason: string | null): string {
   if (!reason) return 'Eliminado'
   const reasons: Record<string, string> = {
-    no_pick:              'No hizo pick a tiempo',
-    no_shot_on_target:    'Su jugador no registró tiro a puerta',
-    player_did_not_play:  'Su jugador no jugó',
-    disqualified:         'Descalificado',
+    no_pick:             'No hizo pick a tiempo',
+    no_shot_on_target:   'Su jugador no registró tiro a puerta',
+    player_did_not_play: 'Su jugador no jugó',
+    disqualified:        'Descalificado',
   }
   return reasons[reason] ?? reason
 }

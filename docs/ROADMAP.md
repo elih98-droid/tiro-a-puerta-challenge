@@ -242,7 +242,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 - [ ] **Estructura legal** — Persona física o moral, T&C, aviso de privacidad.
 - [ ] **Ventana exacta del recordatorio de pick** (`game-rules.md §13.5`).
 - [ ] **Criterios de desempate secundarios** — Revisar si los de `game-rules.md §5.3` son definitivos.
-- [ ] **Branding y diseño visual** — Logo, paleta de colores, tipografía.
+- [x] **Branding y diseño visual** — Identidad Dirección 3 implementada en todas las pantallas. Paleta, tipografía, `TPMark` SVG, sistema de diseño completo.
 
 ---
 
@@ -262,7 +262,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Mecánica de picks | ✅ Completo |
 | Mis picks (/my-picks) | ✅ Completo |
 | Tracker en vivo del pick | ✅ Completo |
-| Diseño visual (tarea 8) | 🔄 En progreso — Login ✅, Dashboard ✅, Pick pendiente |
+| Diseño visual (tareas 8–9) | ✅ Completo — todas las pantallas + responsividad desktop |
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ⏳ Pendiente |

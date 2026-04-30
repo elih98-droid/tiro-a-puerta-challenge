@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 29 de abril de 2026 (tarea 8 completa — todas las pantallas del juego rediseñadas)
+**Última actualización:** 29 de abril de 2026 (tarea 8 completa — /signup rediseñado, todas las pantallas con identidad visual)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -181,7 +181,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **`/my-picks` implementado** (diseño propio) — cards con borde de color por resultado, position badges, stats post-evaluación, pill de jugadores quemados.
 - [x] **`/leaderboard` implementado** (diseño propio) — tabla de ranking con líder destacado en dorado, fila propia en azul/dorado, sección de eliminados separada, columnas Días/Goles/Estado.
 - [x] **Barra de marca global** en `app/(game)/layout.tsx` — `TPMark` + wordmark centrado en todas las pestañas, clickeable → `/dashboard`.
-- [ ] Signup — pendiente diseñar e implementar.
+- [x] **`/signup` rediseñado** — misma identidad visual que login (Dirección 3). `TPMark` 72px, campos con íconos, `DarkCheckbox` custom para `over_18_confirmed` y `marketing_emails_opt_in`, CTA signature, esquinas HUD, validación en cliente.
 - [ ] Revisar responsividad desktop (agregar breakpoints sobre el diseño mobile).
 
 ### 🟡 PRIORIDAD MEDIA — Comunicaciones y UX completa

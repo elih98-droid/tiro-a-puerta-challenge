@@ -1,12 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/sync-live-matches",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/evaluate-picks",
-      "schedule": "* * * * *"
-    }
-  ]
+  "crons": []
 }

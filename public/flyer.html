@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tiro a Puerta Challenge — Flyer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #05070F;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .flyer {
+      width: 1080px;
+      height: 1350px;
+      background: #0A0E1A;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* ── Noise texture overlay ── */
+    .flyer::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.035;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── Radial glow behind logo area ── */
+    .glow {
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 500px;
+      background: radial-gradient(ellipse at center, rgba(201,168,76,0.07) 0%, rgba(42,57,141,0.06) 40%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Diagonal accent line (top-right) ── */
+    .diag-line {
+      position: absolute;
+      top: 0;
+      right: 180px;
+      width: 1px;
+      height: 120px;
+      background: linear-gradient(to bottom, transparent, rgba(201,168,76,0.25), transparent);
+    }
+
+    /* ── Corner brackets ── */
+    .corner {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      z-index: 2;
+    }
+    .corner.tl { top: 24px; left: 24px; border-top: 2px solid #E61D25; border-left: 2px solid #E61D25; }
+    .corner.tr { top: 24px; right: 24px; border-top: 2px solid #3CAC3B; border-right: 2px solid #3CAC3B; }
+    .corner.bl { bottom: 24px; left: 24px; border-bottom: 2px solid #3CAC3B; border-left: 2px solid #3CAC3B; }
+    .corner.br { bottom: 24px; right: 24px; border-bottom: 2px solid #E61D25; border-right: 2px solid #E61D25; }
+
+    /* ── Top metadata ── */
+    .top-meta {
+      position: absolute;
+      top: 30px;
+      right: 62px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 4px;
+      color: rgba(255,255,255,0.28);
+      z-index: 2;
+    }
+
+    /* ── Content wrapper ── */
+    .content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 72px;
+    }
+
+    /* ── Logo SVG section ── */
+    .logo-wrap {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    /* ── "LA COMPETENCIA" label ── */
+    .comp-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: rgba(255,255,255,0.3);
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    /* ── Main wordmark ── */
+    .wordmark {
+      text-align: center;
+      line-height: 1;
+    }
+
+    .wordmark-top {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 136px;
+      color: #FFFFFF;
+      letter-spacing: 3px;
+      display: block;
+      line-height: 0.92;
+    }
+
+    .wordmark-sub {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 18px;
+      color: #C9A84C;
+      display: block;
+      margin-top: 10px;
+      text-indent: 18px; /* optical centering for letter-spacing */
+    }
+
+    /* ── MEX Badge ── */
+    .mex-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(201,168,76,0.22);
+      padding: 7px 20px;
+      margin-top: 20px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: rgba(201,168,76,0.8);
+    }
+
+    .badge-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    /* ── Prize section ── */
+    .prize-section {
+      text-align: center;
+      margin-top: 44px;
+      width: 100%;
+    }
+
+    .prize-eyebrow {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 5px;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .prize-rule {
+      width: 220px;
+      height: 1px;
+      margin: 12px auto;
+      background: linear-gradient(to right, transparent, rgba(201,168,76,0.35), transparent);
+    }
+
+    .prize-amount {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 148px;
+      color: #FFFFFF;
+      letter-spacing: 2px;
+      line-height: 0.9;
+      /* Subtle gold glow */
+      text-shadow:
+        0 0 80px rgba(201,168,76,0.15),
+        0 0 160px rgba(201,168,76,0.08);
+    }
+
+    .prize-currency {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 5px;
+      color: rgba(255,255,255,0.38);
+      margin-top: 4px;
+    }
+
+    /* ── Survivor badge ── */
+    .survivor {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(201,168,76,0.2);
+      background: rgba(201,168,76,0.04);
+      padding: 9px 22px;
+      margin-top: 22px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: rgba(201,168,76,0.75);
+    }
+
+    /* ── Steps section ── */
+    .steps-section {
+      width: 100%;
+      padding: 0 64px;
+      margin-top: 48px;
+    }
+
+    .steps-header {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: rgba(255,255,255,0.3);
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.055);
+      position: relative;
+    }
+
+    .step:last-child {
+      border-bottom: none;
+    }
+
+    .step-bar {
+      width: 3px;
+      height: 52px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      border-radius: 2px;
+    }
+
+    .step-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 28px;
+      padding-left: 22px;
+      width: 100%;
+    }
+
+    .step-label-block {
+      min-width: 140px;
+    }
+
+    .step-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      margin-bottom: 5px;
+    }
+
+    .step-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 19px;
+      font-weight: 900;
+      color: #FFFFFF;
+      letter-spacing: 1px;
+      line-height: 1.15;
+    }
+
+    .step-desc {
+      font-family: 'Barlow', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.52);
+      line-height: 1.55;
+      padding-top: 6px;
+    }
+
+    /* ── Footer tricolor bar ── */
+    .footer-bar {
+      position: absolute;
+      bottom: 58px;
+      left: 40px;
+      right: 40px;
+      height: 2px;
+      display: flex;
+    }
+
+    .footer-bar span {
+      flex: 1;
+    }
+
+    /* ── Footer text ── */
+    .footer-row {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 54px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 44px;
+    }
+
+    .footer-text {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 3.5px;
+      color: rgba(255,255,255,0.22);
+    }
+
+    .footer-gem {
+      width: 5px;
+      height: 5px;
+      background: #C9A84C;
+      transform: rotate(45deg);
+      opacity: 0.6;
+    }
+
+    /* ── Subtle horizontal divider line ── */
+    .h-divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,0.06), transparent);
+      margin: 36px 0 0;
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="flyer">
+
+  <!-- Atmospheric glow -->
+  <div class="glow"></div>
+  <div class="diag-line"></div>
+
+  <!-- Corner brackets -->
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <!-- Top metadata -->
+  <div class="top-meta">MUNDIAL 2026 · MÉXICO</div>
+
+  <!-- ───────────────── CONTENT ───────────────── -->
+  <div class="content">
+
+    <!-- LOGO SVG -->
+    <div class="logo-wrap">
+      <svg width="340" height="220" viewBox="0 0 340 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+        <!-- Glow halo behind ball -->
+        <radialGradient id="ballGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
+        </radialGradient>
+        <circle cx="176" cy="114" r="70" fill="url(#ballGlow)"/>
+
+        <!-- Ray: Red — shoots upper-left -->
+        <line x1="148" y1="104" x2="28" y2="52" stroke="#E61D25" stroke-width="7" stroke-linecap="round"/>
+        <!-- Ray: Green — shoots middle-left -->
+        <line x1="144" y1="114" x2="12" y2="114" stroke="#3CAC3B" stroke-width="7" stroke-linecap="round"/>
+        <!-- Ray: Blue — shoots lower-left -->
+        <line x1="148" y1="126" x2="28" y2="178" stroke="#2A398D" stroke-width="7" stroke-linecap="round"/>
+
+        <!-- Goalpost vertical bar (gold) -->
+        <rect x="218" y="30" width="9" height="158" fill="#C9A84C" rx="3"/>
+        <!-- Crossbar top (gold) -->
+        <rect x="218" y="30" width="64" height="7" fill="#C9A84C" rx="3"/>
+        <!-- Net lines (subtle) -->
+        <line x1="227" y1="47" x2="282" y2="47" stroke="rgba(201,168,76,0.18)" stroke-width="1"/>
+        <line x1="227" y1="64" x2="282" y2="64" stroke="rgba(201,168,76,0.18)" stroke-width="1"/>
+        <line x1="227" y1="81" x2="282" y2="81" stroke="rgba(201,168,76,0.18)" stroke-width="1"/>
+        <line x1="227" y1="98" x2="282" y2="98" stroke="rgba(201,168,76,0.18)" stroke-width="1"/>
+        <line x1="227" y1="115" x2="282" y2="115" stroke="rgba(201,168,76,0.15)" stroke-width="1"/>
+        <line x1="247" y1="37" x2="247" y2="118" stroke="rgba(201,168,76,0.12)" stroke-width="1"/>
+        <line x1="265" y1="37" x2="265" y2="118" stroke="rgba(201,168,76,0.12)" stroke-width="1"/>
+
+        <!-- Soccer ball body -->
+        <circle cx="176" cy="114" r="46" fill="#F0F0F0"/>
+
+        <!-- Ball stitching / pattern (classic pentagonal shape, simplified) -->
+        <!-- Central pentagon -->
+        <polygon
+          points="176,88 196,101 188,124 164,124 156,101"
+          fill="#111111" opacity="0.85"/>
+        <!-- Side panels (lighter) -->
+        <polygon points="176,88 196,101 210,86 204,68 186,66" fill="#1A1A1A" opacity="0.55"/>
+        <polygon points="196,101 210,118 222,114 222,100 210,86" fill="#1A1A1A" opacity="0.45"/>
+        <polygon points="188,124 196,141 210,134 210,118 196,101" fill="#1A1A1A" opacity="0.45"/>
+        <polygon points="164,124 158,141 172,148 188,140 188,124" fill="#1A1A1A" opacity="0.45"/>
+        <polygon points="156,101 142,118 142,132 158,141 164,124" fill="#1A1A1A" opacity="0.45"/>
+        <polygon points="176,88 156,101 142,86 148,68 166,66" fill="#1A1A1A" opacity="0.55"/>
+
+        <!-- Ball outline -->
+        <circle cx="176" cy="114" r="46" fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1.5"/>
+
+        <!-- Subtle shine on ball -->
+        <ellipse cx="162" cy="96" rx="12" ry="7" fill="white" opacity="0.18" transform="rotate(-20 162 96)"/>
+      </svg>
+    </div>
+
+    <!-- LA COMPETENCIA label -->
+    <div class="comp-label">LA COMPETENCIA DEL MUNDIAL 2026</div>
+
+    <!-- Main wordmark -->
+    <div class="wordmark">
+      <span class="wordmark-top">TIRO A PUERTA</span>
+      <span class="wordmark-sub">CHALLENGE</span>
+    </div>
+
+    <!-- MEX·USA·CAN Badge -->
+    <div class="mex-badge">
+      <div class="badge-dots">
+        <div class="badge-dot" style="background:#E61D25;"></div>
+        <div class="badge-dot" style="background:#3CAC3B;"></div>
+        <div class="badge-dot" style="background:#2A398D;"></div>
+      </div>
+      MEX · USA · CAN 2026
+    </div>
+
+    <!-- Prize -->
+    <div class="prize-section">
+      <div class="prize-eyebrow">— PREMIO AL GANADOR —</div>
+      <div class="prize-rule"></div>
+      <div class="prize-amount">$100,000</div>
+      <div class="prize-currency">PESOS MEXICANOS</div>
+
+      <!-- Survivor tag -->
+      <div>
+        <span class="survivor">
+          ⚡ UN TIRO &nbsp;·&nbsp; UN DÍA &nbsp;·&nbsp; SOBREVIVE ⚡
+        </span>
+      </div>
+    </div>
+
+    <div class="h-divider" style="width:calc(100% - 128px);"></div>
+
+    <!-- Steps -->
+    <div class="steps-section">
+      <div class="steps-header">¿CÓMO FUNCIONA?</div>
+
+      <!-- Paso 01 -->
+      <div class="step">
+        <div class="step-bar" style="background:#E61D25;"></div>
+        <div class="step-inner">
+          <div class="step-label-block">
+            <div class="step-num" style="color:#E61D25;">PASO 01</div>
+            <div class="step-title">ELIGE UN<br>JUGADOR</div>
+          </div>
+          <div class="step-desc">Cada día del Mundial escoge al jugador que crees que tirará a puerta ese día</div>
+        </div>
+      </div>
+
+      <!-- Paso 02 -->
+      <div class="step">
+        <div class="step-bar" style="background:#C9A84C;"></div>
+        <div class="step-inner">
+          <div class="step-label-block">
+            <div class="step-num" style="color:#C9A84C;">PASO 02</div>
+            <div class="step-title">TIRA =<br>AVANZAS</div>
+          </div>
+          <div class="step-desc">Si tu jugador tira a puerta ese día, avanzas a la siguiente fecha del torneo</div>
+        </div>
+      </div>
+
+      <!-- Paso 03 -->
+      <div class="step">
+        <div class="step-bar" style="background:#3CAC3B;"></div>
+        <div class="step-inner">
+          <div class="step-label-block">
+            <div class="step-num" style="color:#3CAC3B;">PASO 03</div>
+            <div class="step-title">SIN<br>REPETIR</div>
+          </div>
+          <div class="step-desc">Cada jugador solo puede usarse una vez en todo el torneo. La estrategia lo es todo</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Footer tricolor bar -->
+  <div class="footer-bar">
+    <span style="background:#E61D25;"></span>
+    <span style="background:#C9A84C;"></span>
+    <span style="background:#3CAC3B;"></span>
+  </div>
+
+  <!-- Footer row -->
+  <div class="footer-row">
+    <div class="footer-text">MUNDIAL 2026</div>
+    <div class="footer-gem"></div>
+    <div class="footer-text">TIRO A PUERTA CHALLENGE</div>
+  </div>
+
+</div><!-- /flyer -->
+
+</body>
+</html>

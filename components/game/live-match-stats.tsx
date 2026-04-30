@@ -9,6 +9,11 @@
  *
  * Only renders meaningful content when the match is live or finished.
  * If the match hasn't started yet (scheduled), shows a subtle "waiting" state.
+ *
+ * Visually integrated with the brand design system (Dirección 3):
+ *   - Dark semi-transparent panel inside PickConfirmedCard
+ *   - Bebas Neue for stat numbers, JetBrains Mono for labels/badges
+ *   - Brand colors: green #3CAC3B (shots), gold #C9A84C (goals), red #E61D25 (EN VIVO)
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -47,7 +52,6 @@ export function LiveMatchStats({ matchId, playerId }: LiveMatchStatsProps) {
   const fetchData = useCallback(async () => {
     const supabase = createClient()
 
-    // Fetch match status, score, real match minute, and team names for display.
     const { data: matchData } = await supabase
       .from('matches')
       .select(`
@@ -62,19 +66,16 @@ export function LiveMatchStats({ matchId, playerId }: LiveMatchStatsProps) {
       .eq('id', matchId)
       .single()
 
-    // Fetch player stats for this specific match.
-    // If the player wasn't convoked, there will be no row — that's fine.
     const { data: statsData } = await supabase
       .from('player_match_stats')
       .select('shots_on_target, goals, minutes_played, last_api_sync_at')
       .eq('match_id', matchId)
       .eq('player_id', playerId)
-      .maybeSingle() // use maybeSingle so missing row → null, not an error
+      .maybeSingle()
 
     if (matchData) {
       setMatch(matchData as unknown as MatchData)
     }
-    // statsData is null when no row exists — that's meaningful (player not convoked)
     setStats(statsData ?? null)
     setLastRefreshed(new Date())
   }, [matchId, playerId])
@@ -85,117 +86,205 @@ export function LiveMatchStats({ matchId, playerId }: LiveMatchStatsProps) {
     return () => clearInterval(interval)
   }, [fetchData])
 
+  // Loading
   if (!match) {
-    return <p className="text-sm text-gray-400 mt-2">Cargando stats del partido...</p>
-  }
-
-  if (match.status === 'scheduled') {
     return (
-      <p className="text-sm text-gray-500 mt-2">
-        ⏳ El partido aún no comienza.
+      <p style={{
+        marginTop: 8,
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 11, color: 'rgba(255,255,255,0.3)',
+      }}>
+        Cargando stats...
       </p>
     )
   }
 
-  const isLive = match.status === 'live'
+  // Not started yet
+  if (match.status === 'scheduled') {
+    return (
+      <p style={{
+        marginTop: 8,
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 11, color: 'rgba(255,255,255,0.3)',
+      }}>
+        ⏳ El partido aún no comienza
+      </p>
+    )
+  }
+
+  const isLive     = match.status === 'live'
   const isFinished = match.status === 'finished'
 
   const homeTeam = (match.home_team as unknown as { name: string } | null)?.name ?? '?'
   const awayTeam = (match.away_team as unknown as { name: string } | null)?.name ?? '?'
 
-  // Real match minute from DB (written by sync-live-matches from fixture.status.elapsed).
-  // null when match hasn't started or has finished.
-  const liveMinute = isLive && match.match_minute != null ? `${match.match_minute}'` : null
-
-  // Treat missing stats record as zero shots (player not convoked or not yet tracked)
+  const liveMinute    = isLive && match.match_minute != null ? `${match.match_minute}'` : null
   const shotsOnTarget = stats?.shots_on_target ?? 0
-  const goals = stats?.goals ?? 0
+  const goals         = stats?.goals ?? 0
   const minutesPlayed = stats?.minutes_played ?? 0
   const hasShotOnTarget = shotsOnTarget > 0
 
   return (
-    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
-      {/* Match status badge + scoreline */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium text-gray-800">
-          {homeTeam} {match.home_score ?? '–'} – {match.away_score ?? '–'} {awayTeam}
+    <div style={{
+      marginTop: 10,
+      padding: '10px 12px',
+      background: 'rgba(0,0,0,0.3)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 8,
+    }}>
+
+      {/* ── Match header: scoreline + status badge ──────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: (isLive || isFinished) ? 10 : 0,
+      }}>
+        {/* Score */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            fontFamily: 'var(--font-archivo), sans-serif',
+            fontSize: 11, fontWeight: 500,
+            color: 'rgba(255,255,255,0.55)',
+            maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {homeTeam}
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+            fontSize: 20, letterSpacing: 1,
+            color: '#fff', lineHeight: 1,
+            padding: '0 4px',
+          }}>
+            {match.home_score ?? '–'} – {match.away_score ?? '–'}
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-archivo), sans-serif',
+            fontSize: 11, fontWeight: 500,
+            color: 'rgba(255,255,255,0.55)',
+            maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {awayTeam}
+          </span>
         </div>
+
+        {/* Status badge */}
         <StatusBadge status={match.status} minute={liveMinute} />
       </div>
 
-      {/* Player stats — only meaningful once the match is underway */}
+      {/* ── Player stats row ─────────────────────────────────────────────── */}
       {(isLive || isFinished) && (
-        <div className="flex gap-4 text-sm">
+        <div style={{ display: 'flex', gap: 20 }}>
           <StatItem
-            icon="🎯"
-            label="Tiro(s) a puerta"
+            label="TIROS A PUERTA"
             value={shotsOnTarget}
             highlight={hasShotOnTarget}
+            highlightColor="#3CAC3B"
           />
           <StatItem
-            icon="⚽"
-            label="Gol(es)"
+            label="GOL(ES)"
             value={goals}
             highlight={goals > 0}
+            highlightColor="#C9A84C"
           />
           <StatItem
-            icon="⏱"
-            label="Min jugados"
+            label="MIN JUGADOS"
             value={minutesPlayed}
           />
         </div>
       )}
 
-      {/* Survival indicator — shown whenever the match is live, even if no stats record */}
+      {/* ── Survival indicator ───────────────────────────────────────────── */}
       {isLive && (
-        <p className={`text-xs font-semibold ${hasShotOnTarget ? 'text-green-600' : 'text-red-500'}`}>
-          {hasShotOnTarget
-            ? '✅ Con tiro a puerta — sobrevivirías si el partido termina así'
-            : '⚠️ Sin tiro a puerta aún — necesitas que tu jugador dispare'}
-        </p>
+        <div style={{ marginTop: 8 }}>
+          <span style={{
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+            color: hasShotOnTarget ? '#3CAC3B' : '#F59E0B',
+          }}>
+            {hasShotOnTarget
+              ? '✅ CON TIRO A PUERTA — SOBREVIVIRÍAS'
+              : '⚠️ SIN TIRO AÚN — NECESITA DISPARAR'}
+          </span>
+        </div>
       )}
 
       {isFinished && (
-        <p className={`text-xs font-semibold ${hasShotOnTarget ? 'text-green-600' : 'text-red-500'}`}>
-          {hasShotOnTarget
-            ? `✅ Partido terminado — ${shotsOnTarget} tiro(s) a puerta registrado(s)`
-            : '❌ Partido terminado — sin tiros a puerta'}
-        </p>
+        <div style={{ marginTop: 8 }}>
+          <span style={{
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+            color: hasShotOnTarget ? '#3CAC3B' : '#E61D25',
+          }}>
+            {hasShotOnTarget
+              ? `✅ ${shotsOnTarget} TIRO(S) A PUERTA — SOBREVIVISTE`
+              : '✕ SIN TIROS A PUERTA — PARTIDO TERMINADO'}
+          </span>
+        </div>
       )}
 
-      {/* Last refresh timestamp */}
+      {/* ── Last sync timestamp (live only) ─────────────────────────────── */}
       {isLive && lastRefreshed && (
-        <p className="text-xs text-gray-400">
-          Actualizado: {lastRefreshed.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-        </p>
+        <div style={{
+          marginTop: 6,
+          fontFamily: 'var(--font-jetbrains-mono), monospace',
+          fontSize: 9, color: 'rgba(255,255,255,0.2)',
+        }}>
+          sync {lastRefreshed.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        </div>
       )}
     </div>
   )
 }
 
-// ──────────────────────────────────────────────
-// Sub-components
-// ──────────────────────────────────────────────
+// ─── StatusBadge ──────────────────────────────────────────────────────────────
 
 function StatusBadge({ status, minute }: { status: string; minute: string | null }) {
   if (status === 'live') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">
-        <span className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" />
-        EN VIVO {minute && <span className="font-normal">{minute}</span>}
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '3px 8px', borderRadius: 999,
+        background: 'rgba(230,29,37,0.15)',
+        border: '1px solid rgba(230,29,37,0.4)',
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 8.5, fontWeight: 700, letterSpacing: 1,
+        color: '#E61D25',
+        flexShrink: 0,
+      }}>
+        <span style={{
+          width: 5, height: 5, borderRadius: 3,
+          background: '#E61D25', display: 'inline-block',
+          animation: 'tpPulse 1.2s ease-in-out infinite',
+        }} />
+        EN VIVO{minute && <span style={{ fontWeight: 400, marginLeft: 2 }}>{minute}</span>}
       </span>
     )
   }
   if (status === 'finished') {
     return (
-      <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs font-semibold rounded-full">
+      <span style={{
+        padding: '3px 8px', borderRadius: 999,
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 8.5, fontWeight: 700, letterSpacing: 1,
+        color: 'rgba(255,255,255,0.4)',
+        flexShrink: 0,
+      }}>
         FINALIZADO
       </span>
     )
   }
   if (status === 'suspended') {
     return (
-      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full">
+      <span style={{
+        padding: '3px 8px', borderRadius: 999,
+        background: 'rgba(245,158,11,0.1)',
+        border: '1px solid rgba(245,158,11,0.35)',
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 8.5, fontWeight: 700, letterSpacing: 1,
+        color: '#F59E0B',
+        flexShrink: 0,
+      }}>
         SUSPENDIDO
       </span>
     )
@@ -203,20 +292,39 @@ function StatusBadge({ status, minute }: { status: string; minute: string | null
   return null
 }
 
-interface StatItemProps {
-  icon: string
+// ─── StatItem ─────────────────────────────────────────────────────────────────
+
+function StatItem({
+  label,
+  value,
+  highlight = false,
+  highlightColor = 'rgba(255,255,255,0.6)',
+}: {
   label: string
   value: number
   highlight?: boolean
-}
+  highlightColor?: string
+}) {
+  const valueColor = highlight ? highlightColor : 'rgba(255,255,255,0.35)'
 
-function StatItem({ icon, label, value, highlight = false }: StatItemProps) {
   return (
-    <div className="flex flex-col items-center gap-0.5 min-w-[60px]">
-      <span className={`text-lg font-bold ${highlight ? 'text-green-600' : 'text-gray-700'}`}>
-        {icon} {value}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 40 }}>
+      <span style={{
+        fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+        fontSize: 28, lineHeight: 1, letterSpacing: 0.5,
+        color: valueColor,
+        textShadow: highlight ? `0 0 10px ${highlightColor}55` : 'none',
+      }}>
+        {value}
       </span>
-      <span className="text-xs text-gray-500 text-center leading-tight">{label}</span>
+      <span style={{
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 8, fontWeight: 700, letterSpacing: 0.8,
+        textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)',
+        textAlign: 'center', lineHeight: 1.2,
+      }}>
+        {label}
+      </span>
     </div>
   )
 }

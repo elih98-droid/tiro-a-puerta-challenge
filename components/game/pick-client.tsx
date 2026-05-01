@@ -133,6 +133,8 @@ export function PickClient({
         setSelectedMatchId(null)
         setSelectedDeadline(null)
         router.refresh()
+        // Scroll to top so the user sees the confirmed pick card (green pill)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     })
   }

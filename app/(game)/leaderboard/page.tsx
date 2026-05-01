@@ -90,8 +90,8 @@ export default async function LeaderboardPage() {
         }}>
           <div style={{ width: 36 }}>#</div>
           <div style={{ flex: 1 }}>Jugador</div>
-          <div style={{ width: 40, textAlign: 'right' }}>Tiros</div>
           <div style={{ width: 44, textAlign: 'right' }}>Goles</div>
+          <div style={{ width: 40, textAlign: 'right' }}>Tiros</div>
           <div style={{ width: 76, textAlign: 'right' }}>Estado</div>
         </div>
       )}
@@ -282,16 +282,6 @@ function RankRow({
         </div>
       </div>
 
-      {/* Shots */}
-      <div style={{
-        width: 40, textAlign: 'right', flexShrink: 0,
-        fontFamily: 'var(--font-jetbrains-mono), monospace',
-        fontSize: 12, fontWeight: 700,
-        color: shots > 0 ? '#3CAC3B' : statsColor,
-      }}>
-        {shots}
-      </div>
-
       {/* Goals */}
       <div style={{
         width: 44, textAlign: 'right', flexShrink: 0,
@@ -300,6 +290,16 @@ function RankRow({
         color: goals > 0 ? '#C9A84C' : statsColor,
       }}>
         {goals}
+      </div>
+
+      {/* Shots */}
+      <div style={{
+        width: 40, textAlign: 'right', flexShrink: 0,
+        fontFamily: 'var(--font-jetbrains-mono), monospace',
+        fontSize: 12, fontWeight: 700,
+        color: shots > 0 ? '#3CAC3B' : statsColor,
+      }}>
+        {shots}
       </div>
 
       {/* Status badge */}

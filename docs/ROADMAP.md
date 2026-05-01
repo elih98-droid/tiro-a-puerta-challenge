@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 30 de abril de 2026 (fix Site URL Supabase + diseño completo de auth — todas las pantallas con identidad Dirección 3)
+**Última actualización:** 1 de mayo de 2026 (Vercel Pro, crons activos, fix picks mobile, nuevo desempate tiros acumulados)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -232,8 +232,9 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **App en producción** — `tiro-a-puerta.vercel.app` funcionando. Login, diseño y navegación verificados.
 - [x] **Fix Site URL de Supabase** — corregido a `https://tiro-a-puerta.vercel.app`. Links de confirmación de email y reset apuntan a producción. Redirect URLs con wildcard configuradas para prod y localhost.
 - [ ] Configurar dominio personalizado.
-- [ ] Upgrade a Vercel Pro y reactivar Cron Jobs (`* * * * *`) — **obligatorio antes del Mundial**. Actualmente `vercel.json` tiene crons vacíos (limitación Hobby plan).
+- [x] **Upgrade a Vercel Pro** — plan activo desde 1 de mayo. Cron Jobs reactivados en `vercel.json` (`* * * * *`).
 - [ ] Configurar backups de Supabase más frecuentes durante el torneo (`database-schema.md §9.3`).
+- [ ] **Desactivar branch protection en GitHub** — el usuario trabaja solo, push directo a `main` es suficiente. Ir a GitHub → Settings → Branches → eliminar regla de `main`.
 
 ---
 
@@ -245,7 +246,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 - [ ] **Modelo económico y premios** (puede afectar flujo de registro y T&C).
 - [ ] **Estructura legal** — Persona física o moral, T&C, aviso de privacidad.
 - [ ] **Ventana exacta del recordatorio de pick** (`game-rules.md §13.5`).
-- [ ] **Criterios de desempate secundarios** — Revisar si los de `game-rules.md §5.3` son definitivos.
+- [x] **Criterios de desempate secundarios** — Resuelto: tiros totales acumulados (`total_shots_accumulated`) como segundo desempate. `game-rules.md §5.3` actualizado.
 - [x] **Branding y diseño visual** — Identidad Dirección 3 implementada en todas las pantallas. Paleta, tipografía, `TPMark` SVG, sistema de diseño completo.
 
 ---
@@ -272,6 +273,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Emails transaccionales | ⏳ Pendiente |
 | Tests críticos | ⏳ Pendiente |
 | Monitoreo y producción | ⏳ Pendiente |
+| Vercel Pro + crons activos | ✅ Completo (1 mayo) |
 
 ---
 

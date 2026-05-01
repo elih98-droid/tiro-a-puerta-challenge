@@ -301,7 +301,7 @@ Si el jugador elegido no tiene fila en `player_match_stats` para su partido (no 
 
 ## Cosas que Claude Code NO debe hacer
 
-- No hacer commits directamente a `main`. Siempre PR.
+- ~~No hacer commits directamente a `main`. Siempre PR.~~ *(El usuario trabaja solo — push directo a `main` es aceptable. Pendiente desactivar branch protection en GitHub settings.)*
 - No instalar librerías sin consultar.
 - No modificar `docs/game-rules.md` ni `docs/database-schema.md` sin confirmación explícita del usuario.
 - No desactivar RLS en Supabase.
@@ -349,6 +349,7 @@ Al abrir el proyecto, Claude Code idealmente:
 - **v3.0 (abril 2026):** responsividad desktop. Game layout centra contenido a `max-width: 480px`. Brand bar fondo full-width, contenido centrado. Confirm panel del pick corregido a 480px. Auth pages ya tenían 460px. En desktop el contenido aparece centrado como app mobile con fondo oscuro de borde a borde.
 - **v3.1 (abril/mayo 2026):** primer deploy en Vercel. App en producción en `tiro-a-puerta.vercel.app`. 5 variables de entorno configuradas. Crons desactivados temporalmente (`vercel.json` con array vacío) por limitación del plan Hobby — reactivar al upgradear a Pro antes del Mundial. Página raíz `/` redirige a `/login`. Sistema de aprobación manual verificado en producción (`/admin/approvals`). Usuarios de prueba (`elias_test` admin, `El_Conde`) listos para pruebas con socios este fin de semana con PL.
 - **v3.2 (mayo 2026):** fix de producción: Supabase Site URL corregido a `https://tiro-a-puerta.vercel.app` — los links de confirmación de email apuntaban a `localhost:3000`. Redirect URLs actualizadas en Supabase Auth para incluir wildcard de producción y localhost. Páginas de auth restantes rediseñadas con identidad Dirección 3: `/verify-email` (ícono de sobre, card con hint de spam, link al login) y `/complete-profile` (campo username, 2 DarkCheckbox, CTA "Continuar al desafío", nota de "Autenticado con Google"). Todas las pantallas de auth ahora tienen diseño consistente.
+- **v3.3 (mayo 2026):** sesión 1 de mayo. Upgrade a Vercel Pro — crons reactivados (`* * * * *`) en `vercel.json`. Fixes en `/pick`: nombres de jugadores truncados correctamente (`minWidth: 0` en columnas del grid), entidades HTML decodificadas (`decodeHtml` en `pick-match-card.tsx` — nombres tipo `O&apos;Brien` corregidos). UX: scroll suave al top al confirmar pick (`window.scrollTo` en `handleConfirm`). Nuevo desempate secundario: `total_shots_accumulated` reemplaza a `days_survived` en `user_status` (migración `20260501000000`, cron `evaluate-picks` actualizado, leaderboard columnas # · Jugador · Goles · Tiros · Estado). `game-rules.md §5.3` y `database-schema.md` actualizados. Pendiente: desactivar branch protection en GitHub (`main` es push directo — usuario trabaja solo).
 
 ---
 

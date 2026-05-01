@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 30 de abril de 2026 (tarea 14 completa — deploy en Vercel, app en producción)
+**Última actualización:** 30 de abril de 2026 (fix Site URL Supabase + diseño completo de auth — todas las pantallas con identidad Dirección 3)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -185,6 +185,8 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **`LiveMatchStats` rediseñado** — panel oscuro integrado con identidad Dirección 3. Score Bebas Neue, stats grandes con glow de color, badges JetBrains Mono. Sin Tailwind.
 - [x] **`/reset-password` y `/update-password` rediseñados** — identidad Dirección 3 completa. HUD corners, halo dorado, `TPMark` 72px, campos con íconos, toggle show/hide en passwords, estados de éxito en verde, CTA signature.
 - [x] **Tarea 9 — Responsividad desktop**: contenido de game layout centrado a `max-width: 480px`. Brand bar full-width con contenido centrado. Confirm panel del pick corregido a 480px. Auth pages ya estaban centradas a 460px.
+- [x] **`/verify-email` rediseñado** — card con ícono de sobre, hint de spam/24h, link al login. Mismo lenguaje visual que resto de auth.
+- [x] **`/complete-profile` rediseñado** — página post-OAuth Google. Campo username con ícono y hint, 2 `DarkCheckbox` (mayoría de edad + marketing), CTA "Continuar al desafío", nota de "Autenticado con Google" al pie. Identidad Dirección 3 completa. Todas las pantallas de auth ahora tienen diseño consistente.
 
 ### 🟡 PRIORIDAD MEDIA — Comunicaciones y UX completa
 
@@ -228,6 +230,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Crear proyecto en Vercel y conectar el repo de GitHub (`elih98-droid/tiro-a-puerta-challenge`, rama `main`).
 - [x] Configurar variables de entorno en Vercel (5 vars: Supabase URL/anon/service role, API-Football key, CRON_SECRET).
 - [x] **App en producción** — `tiro-a-puerta.vercel.app` funcionando. Login, diseño y navegación verificados.
+- [x] **Fix Site URL de Supabase** — corregido a `https://tiro-a-puerta.vercel.app`. Links de confirmación de email y reset apuntan a producción. Redirect URLs con wildcard configuradas para prod y localhost.
 - [ ] Configurar dominio personalizado.
 - [ ] Upgrade a Vercel Pro y reactivar Cron Jobs (`* * * * *`) — **obligatorio antes del Mundial**. Actualmente `vercel.json` tiene crons vacíos (limitación Hobby plan).
 - [ ] Configurar backups de Supabase más frecuentes durante el torneo (`database-schema.md §9.3`).

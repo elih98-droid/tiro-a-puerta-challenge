@@ -348,6 +348,7 @@ Al abrir el proyecto, Claude Code idealmente:
 - **v2.9 (abril 2026):** `/reset-password` y `/update-password` rediseñados con identidad Dirección 3. Mismo lenguaje visual que login/signup: fondo oscuro, grid overlay, halo dorado, HUD corners, `TPMark` 72px. Reset: campo email con EmailIcon, estado de éxito verde, link "← Volver al login". Update: dos campos password con LockIcon + toggle show/hide (EyeIcon), estado de éxito verde. CTA signature en ambos. Build ✅ limpio.
 - **v3.0 (abril 2026):** responsividad desktop. Game layout centra contenido a `max-width: 480px`. Brand bar fondo full-width, contenido centrado. Confirm panel del pick corregido a 480px. Auth pages ya tenían 460px. En desktop el contenido aparece centrado como app mobile con fondo oscuro de borde a borde.
 - **v3.1 (abril/mayo 2026):** primer deploy en Vercel. App en producción en `tiro-a-puerta.vercel.app`. 5 variables de entorno configuradas. Crons desactivados temporalmente (`vercel.json` con array vacío) por limitación del plan Hobby — reactivar al upgradear a Pro antes del Mundial. Página raíz `/` redirige a `/login`. Sistema de aprobación manual verificado en producción (`/admin/approvals`). Usuarios de prueba (`elias_test` admin, `El_Conde`) listos para pruebas con socios este fin de semana con PL.
+- **v3.2 (mayo 2026):** fix de producción: Supabase Site URL corregido a `https://tiro-a-puerta.vercel.app` — los links de confirmación de email apuntaban a `localhost:3000`. Redirect URLs actualizadas en Supabase Auth para incluir wildcard de producción y localhost. Páginas de auth restantes rediseñadas con identidad Dirección 3: `/verify-email` (ícono de sobre, card con hint de spam, link al login) y `/complete-profile` (campo username, 2 DarkCheckbox, CTA "Continuar al desafío", nota de "Autenticado con Google"). Todas las pantallas de auth ahora tienen diseño consistente.
 
 ---
 
@@ -398,6 +399,8 @@ Paleta, tipografía y componentes decididos en sesión de diseño con Claude Des
 | Pick del día (3 artboards) | ✅ Implementado | `components/game/pick-client.tsx`, `pick-match-card.tsx`, `pick-day-nav.tsx` |
 | Mis Picks | ✅ Implementado (diseño propio) | `app/(game)/my-picks/page.tsx` |
 | Leaderboard / Ranking | ✅ Implementado (diseño propio) | `app/(game)/leaderboard/page.tsx` |
+| Verify Email | ✅ Implementado | `app/(auth)/verify-email/page.tsx` |
+| Complete Profile (OAuth) | ✅ Implementado | `components/auth/complete-profile-form.tsx` |
 | Logo (Dirección 3) | 🎨 Diseño aprobado, pendiente implementar | Claude Design bundle |
 
 ### Notas de implementación del diseño

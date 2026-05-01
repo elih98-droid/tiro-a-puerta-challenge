@@ -89,6 +89,18 @@ function fmtCountdown(s: number): string {
     : `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
+// ─── HTML entity decoder ──────────────────────────────────────────────────────
+// Player names from API-Football may arrive with HTML-encoded apostrophes
+// (e.g. "O&apos;Brien"). We decode them before rendering.
+function decodeHtml(str: string): string {
+  return str
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function PickMatchCard({
@@ -239,7 +251,7 @@ export function PickMatchCard({
               { team: match.home_team, players: homePlayers },
               { team: match.away_team, players: awayPlayers },
             ] as const).map((col, i) => (
-              <div key={i}>
+              <div key={i} style={{ minWidth: 0 }}>
                 {/* Team code header */}
                 <div style={{
                   padding: '6px 4px 8px',
@@ -388,7 +400,7 @@ function PlayerRow({
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         letterSpacing: 0.1,
       }}>
-        {player.display_name}
+        {decodeHtml(player.display_name)}
       </span>
 
       {/* State icon */}

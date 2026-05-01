@@ -137,11 +137,11 @@ Los autogoles **no cuentan** para el usuario que tenía a ese jugador como pick 
 
 Si después del primer desempate persiste el empate entre dos o más sobrevivientes, se aplican los siguientes criterios en orden:
 
-1. **Mayor número de días sobrevividos sin "repetir categoría":** usuarios que variaron más entre delanteros, mediocampistas y defensores ganan sobre los que se concentraron en un solo perfil.
+1. **Mayor número de tiros a puerta acumulados:** suma de todos los tiros a puerta (`shots_on_target`) registrados por los jugadores elegidos por cada usuario a lo largo del torneo. Solo se acumulan en picks con resultado `survived` (los picks anulados por partido cancelado o jugador no convocado no suman tiros).
 2. **Orden cronológico de registro:** usuario con fecha/hora de registro más temprana gana.
 3. **Sorteo:** si nada de lo anterior desempata, se realiza un sorteo transparente en vivo (con streaming público).
 
-> **Nota:** los criterios 1 y 2 pueden revisarse antes del lanzamiento. El criterio 3 (sorteo) se mantiene como último recurso.
+> **Nota:** se eligió tiros totales como segundo desempate (en lugar de días sobrevividos) porque en el Mundial todos los participantes inician el mismo día, haciendo que los días vividos sean iguales entre sobrevivientes del mismo corte. Los tiros a puerta reflejan mejor la agresividad de las elecciones de cada usuario a lo largo del torneo.
 
 ---
 

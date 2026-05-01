@@ -5,10 +5,10 @@ import { createClient } from '@/lib/supabase/server'
  *
  * Public ranking of all participants.
  *
- * Ordering (game-rules.md §5.1):
+ * Ordering (game-rules.md §5.1 + §5.3):
  *   1. Alive users first (is_alive DESC)
- *   2. Then by total goals accumulated DESC (tiebreaker)
- *   3. Then by days survived DESC (secondary tiebreaker)
+ *   2. Then by total goals accumulated DESC (primary tiebreaker §5.1)
+ *   3. Then by total shots accumulated DESC (secondary tiebreaker §5.3)
  *
  * This is a Server Component — ranking is the same for everyone.
  * We highlight the current user's row.
@@ -25,12 +25,13 @@ export default async function LeaderboardPage() {
       is_alive,
       days_survived,
       total_goals_accumulated,
+      total_shots_accumulated,
       elimination_reason,
       users ( username )
     `)
     .order('is_alive',                  { ascending: false })
     .order('total_goals_accumulated',   { ascending: false })
-    .order('days_survived',             { ascending: false })
+    .order('total_shots_accumulated',   { ascending: false })
 
   if (error || !rows) {
     return (
@@ -89,7 +90,7 @@ export default async function LeaderboardPage() {
         }}>
           <div style={{ width: 36 }}>#</div>
           <div style={{ flex: 1 }}>Jugador</div>
-          <div style={{ width: 40, textAlign: 'right' }}>Días</div>
+          <div style={{ width: 40, textAlign: 'right' }}>Tiros</div>
           <div style={{ width: 44, textAlign: 'right' }}>Goles</div>
           <div style={{ width: 76, textAlign: 'right' }}>Estado</div>
         </div>
@@ -125,7 +126,7 @@ export default async function LeaderboardPage() {
                 key={row.user_id}
                 rank={row.rank}
                 username={username}
-                daysSurvived={row.days_survived}
+                shots={row.total_shots_accumulated}
                 goals={row.total_goals_accumulated}
                 isAlive={true}
                 isCurrentUser={isCurrentUser}
@@ -165,7 +166,7 @@ export default async function LeaderboardPage() {
                   key={row.user_id}
                   rank={null}
                   username={username}
-                  daysSurvived={row.days_survived}
+                  shots={row.total_shots_accumulated}
                   goals={row.total_goals_accumulated}
                   isAlive={false}
                   isCurrentUser={isCurrentUser}
@@ -185,7 +186,7 @@ export default async function LeaderboardPage() {
           fontSize: 9, letterSpacing: 0.8,
           color: 'rgba(255,255,255,0.2)',
         }}>
-          Orden: vivos primero → goles acumulados → días sobrevividos (§5.1)
+          Orden: vivos primero → goles acumulados → tiros totales (§5.1 + §5.3)
         </div>
       )}
     </>
@@ -197,7 +198,7 @@ export default async function LeaderboardPage() {
 function RankRow({
   rank,
   username,
-  daysSurvived,
+  shots,
   goals,
   isAlive,
   isCurrentUser,
@@ -205,7 +206,7 @@ function RankRow({
 }: {
   rank: number | null
   username: string
-  daysSurvived: number
+  shots: number
   goals: number
   isAlive: boolean
   isCurrentUser: boolean
@@ -281,14 +282,14 @@ function RankRow({
         </div>
       </div>
 
-      {/* Days */}
+      {/* Shots */}
       <div style={{
         width: 40, textAlign: 'right', flexShrink: 0,
         fontFamily: 'var(--font-jetbrains-mono), monospace',
         fontSize: 12, fontWeight: 700,
-        color: isAlive ? '#3CAC3B' : statsColor,
+        color: shots > 0 ? '#3CAC3B' : statsColor,
       }}>
-        {daysSurvived}
+        {shots}
       </div>
 
       {/* Goals */}

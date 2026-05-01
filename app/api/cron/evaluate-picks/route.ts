@@ -257,7 +257,7 @@ async function applyResult(
     // Read current counters first (need them to increment correctly)
     const { data: currentStatus, error: statusReadError } = await supabase
       .from("user_status")
-      .select("days_survived, total_goals_accumulated")
+      .select("days_survived, total_goals_accumulated, total_shots_accumulated")
       .eq("user_id", evaluated.userId)
       .single();
 
@@ -265,11 +265,16 @@ async function applyResult(
       throw new Error(`Failed to read user_status for ${evaluated.userId}: ${statusReadError.message}`);
     }
 
+    // Only accumulate shots on 'survived' — void_cancelled_match gives survival
+    // but no stats count toward tiebreakers (§5.3, consistent with goals logic).
+    const shotsToAdd = evaluated.result === "survived" ? evaluated.shotsOnTarget : 0;
+
     const { error: statusUpdateError } = await supabase
       .from("user_status")
       .update({
         days_survived: (currentStatus.days_survived ?? 0) + 1,
         total_goals_accumulated: (currentStatus.total_goals_accumulated ?? 0) + goalsToAdd,
+        total_shots_accumulated: (currentStatus.total_shots_accumulated ?? 0) + shotsToAdd,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", evaluated.userId)

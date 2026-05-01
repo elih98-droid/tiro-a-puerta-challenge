@@ -282,7 +282,8 @@ Estado de cada usuario en el torneo. Se actualiza cada vez que se procesa un dí
 | `is_alive` | `BOOLEAN` DEFAULT TRUE | TRUE = sigue vivo; FALSE = eliminado. |
 | `eliminated_on_match_day_id` | `INTEGER` REFERENCES `match_days(id)` | NULL si sigue vivo. |
 | `elimination_reason` | `TEXT` | `'no_pick'`, `'no_shot_on_target'`, `'player_did_not_play'`, `'disqualified'`. |
-| `total_goals_accumulated` | `INTEGER` DEFAULT 0 | Para desempate. Se incrementa día con día. |
+| `total_goals_accumulated` | `INTEGER` DEFAULT 0 | Primer desempate. Se incrementa día con día solo en picks `survived`. |
+| `total_shots_accumulated` | `INTEGER` DEFAULT 0 | Segundo desempate (§5.3). Suma de tiros a puerta de todos los picks `survived`. |
 | `days_survived` | `INTEGER` DEFAULT 0 | Contador de días vividos. |
 | `updated_at` | `TIMESTAMPTZ` DEFAULT NOW() | |
 

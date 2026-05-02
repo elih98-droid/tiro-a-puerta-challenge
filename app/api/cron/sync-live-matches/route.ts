@@ -64,6 +64,14 @@ function isAuthorized(request: NextRequest): boolean {
 const SYNC_WINDOW_HOURS = 24;
 
 /**
+ * Max hours a match can stay 'live' in our DB before we force it to 'finished'.
+ * A 90-min match + 30 ET + 5 penalties + buffer = ~3 hours worst case.
+ * If a match exceeds this, the API likely failed to report the final status —
+ * we force-finish it so the evaluate-picks cron isn't blocked forever.
+ */
+const MAX_LIVE_HOURS = 4;
+
+/**
  * Returns the list of matches that need syncing right now:
  * - Currently live (status = 'live').
  * - Scheduled but kickoff has already passed (status = 'scheduled', missed transition).
@@ -115,10 +123,43 @@ async function syncMatch(match: {
   id: number;
   api_external_id: string;
   status: string;
-}): Promise<{ matchId: number; playersUpdated: number; error?: string }> {
+  kickoff_time: string;
+}): Promise<{ matchId: number; playersUpdated: number; error?: string; forcedFinished?: boolean }> {
   const fixtureId = Number(match.api_external_id);
 
   try {
+    // Safety net: if a match has been 'live' in our DB for more than MAX_LIVE_HOURS
+    // since kickoff, the API likely failed to report the final status. Force it to
+    // 'finished' so evaluate-picks isn't blocked indefinitely.
+    if (match.status === "live") {
+      const kickoffMs = new Date(match.kickoff_time).getTime();
+      const hoursElapsed = (Date.now() - kickoffMs) / (1000 * 60 * 60);
+
+      if (hoursElapsed > MAX_LIVE_HOURS) {
+        console.warn(
+          `Match ${match.id} has been live for ${hoursElapsed.toFixed(1)}h — force-finishing.`
+        );
+
+        const { error: forceError } = await supabase
+          .from("matches")
+          .update({ status: "finished", match_minute: null })
+          .eq("id", match.id);
+
+        if (forceError) {
+          return { matchId: match.id, playersUpdated: 0, error: `Force-finish failed: ${forceError.message}` };
+        }
+
+        await supabase.from("api_sync_events").insert({
+          entity_type: "player_stats",
+          entity_id: String(fixtureId),
+          sync_status: "success",
+          api_response_summary: { fixture_status: "force_finished", hours_elapsed: hoursElapsed },
+        });
+
+        return { matchId: match.id, playersUpdated: 0, forcedFinished: true };
+      }
+    }
+
     // Step 1: Fetch current match status from API.
     const apiFixture = await getFixtureById(fixtureId);
     if (!apiFixture) {
@@ -132,7 +173,7 @@ async function syncMatch(match: {
     // Step 2: Update match status, scores, and current minute in DB.
     // match_minute comes from fixture.status.elapsed (real API minute).
     // Set to null when finished so the tracker doesn't show a stale minute.
-    await supabase
+    const { error: matchUpdateError } = await supabase
       .from("matches")
       .update({
         status: newStatus,
@@ -143,6 +184,10 @@ async function syncMatch(match: {
         match_minute: newStatus === "live" ? (apiFixture.fixture.status.elapsed ?? null) : null,
       })
       .eq("id", match.id);
+
+    if (matchUpdateError) {
+      throw new Error(`Failed to update match ${match.id} status: ${matchUpdateError.message}`);
+    }
 
     // Step 3: Fetch and upsert player stats (only if match has started).
     // A match that is still 'scheduled' after our status check just started —
@@ -284,6 +329,7 @@ export async function GET(request: NextRequest) {
     );
 
     const errors = summary.filter((r) => r.error);
+    const forcedFinished = summary.filter((r) => r.forcedFinished).length;
     const totalPlayersUpdated = summary.reduce(
       (acc, r) => acc + r.playersUpdated,
       0
@@ -292,6 +338,7 @@ export async function GET(request: NextRequest) {
     return Response.json({
       ok: errors.length === 0,
       matches_synced: matches.length,
+      forced_finished: forcedFinished > 0 ? forcedFinished : undefined,
       players_updated: totalPlayersUpdated,
       errors: errors.length > 0 ? errors : undefined,
       elapsed_ms: Date.now() - startedAt,

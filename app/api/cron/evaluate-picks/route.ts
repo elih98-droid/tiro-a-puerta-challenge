@@ -419,17 +419,38 @@ async function processMatchDay(day: {
     errors.push(message);
   }
 
-  // Mark day as processed only if there were no errors
+  // Mark day as processed only if there were no errors AND no locked picks
+  // remain unevaluated. The second check guards against a race condition where
+  // evaluate-picks runs while a late-starting match is briefly finished in the
+  // DB but its picks haven't been locked yet — without this, is_processed would
+  // be set to TRUE and those picks would be skipped forever.
   if (errors.length === 0) {
-    const { error: markError } = await supabase
-      .from("match_days")
-      .update({ is_processed: true })
-      .eq("id", day.id);
+    const { data: remainingPicks, error: remainingError } = await supabase
+      .from("user_picks")
+      .select("id")
+      .eq("match_day_id", day.id)
+      .eq("is_locked", true)
+      .is("result", null)
+      .limit(1);
 
-    if (markError) {
-      errors.push(`Failed to mark day ${day.id} as processed: ${markError.message}`);
+    if (remainingError) {
+      errors.push(`Failed to verify remaining picks for day ${day.id}: ${remainingError.message}`);
+    } else if (remainingPicks && remainingPicks.length > 0) {
+      // Still unevaluated picks — don't mark as processed, retry next run.
+      console.warn(
+        `Day ${day.id} has unevaluated locked picks remaining — not marking as processed. Will retry next run.`
+      );
     } else {
-      console.log(`Match day ${day.id} (${day.match_date}) marked as processed.`);
+      const { error: markError } = await supabase
+        .from("match_days")
+        .update({ is_processed: true })
+        .eq("id", day.id);
+
+      if (markError) {
+        errors.push(`Failed to mark day ${day.id} as processed: ${markError.message}`);
+      } else {
+        console.log(`Match day ${day.id} (${day.match_date}) marked as processed.`);
+      }
     }
   } else {
     console.warn(

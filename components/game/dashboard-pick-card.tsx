@@ -294,9 +294,15 @@ function LiveCard({
   const isScheduled  = data.status === 'scheduled'
   const hasSot       = data.shots > 0
 
-  // Indicador de supervivencia
-  const survivalOk = pickResult === 'survived' || (isLive && hasSot)
-  const survivalBad = pickResult === 'eliminated' || (isFinished && !hasSot)
+  // Indicador de supervivencia — 4 estados:
+  //   ok      → partido terminado con tiro, o en vivo con tiro
+  //   bad     → partido terminado sin tiro, o eliminado
+  //   warning → partido en vivo, aún sin tiro (está en riesgo)
+  //   waiting → partido no ha empezado (pick guardado, esperando)
+  const survivalOk      = pickResult === 'survived' || (isFinished && hasSot) || (isLive && hasSot)
+  const survivalBad     = pickResult === 'eliminated' || (isFinished && !hasSot)
+  const survivalWarning = isLive && !hasSot && !survivalBad
+  const survivalWaiting = isScheduled
 
   const initials = getPlayerInitials(playerName)
   const posLabel = playerPosition?.toUpperCase() ?? '---'
@@ -390,19 +396,49 @@ function LiveCard({
         {/* Indicador de supervivencia */}
         <div style={{
           width: 44, height: 44, borderRadius: 22,
-          background: survivalBad ? `${P.red}22` : `${P.green}22`,
-          border: `2px solid ${survivalBad ? P.red : P.green}`,
+          background: survivalOk      ? `${P.green}22`
+                    : survivalBad     ? `${P.red}22`
+                    : survivalWarning ? `${P.gold}22`
+                    : `${P.blue}22`,
+          border: `2px solid ${
+            survivalOk      ? P.green
+            : survivalBad   ? P.red
+            : survivalWarning ? P.gold
+            : P.blue
+          }`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 0 16px ${survivalBad ? P.red : P.green}55`,
+          boxShadow: `0 0 16px ${
+            survivalOk      ? P.green
+            : survivalBad   ? P.red
+            : survivalWarning ? P.gold
+            : P.blue
+          }55`,
           flexShrink: 0,
         }}>
-          {survivalBad ? (
+          {survivalOk && (
+            // Checkmark verde — tiro a puerta confirmado
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12.5l4.5 4.5L19 7" stroke={P.green} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+          {survivalBad && (
+            // X roja — eliminado
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M18 6L6 18M6 6l12 12" stroke={P.red} strokeWidth="2.5" strokeLinecap="round" />
             </svg>
-          ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12.5l4.5 4.5L19 7" stroke={P.green} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+          {survivalWarning && (
+            // Triángulo de advertencia dorado — en vivo, aún sin tiro
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M12 4L2 20h20L12 4z" stroke={P.gold} strokeWidth="2" strokeLinejoin="round" />
+              <path d="M12 10v5M12 17v.01" stroke={P.gold} strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          )}
+          {survivalWaiting && (
+            // Reloj azul — partido no ha empezado
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8" stroke={P.blue} strokeWidth="2" />
+              <path d="M12 8v4l2.5 2.5" stroke={P.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
         </div>

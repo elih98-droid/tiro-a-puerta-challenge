@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 1 de mayo de 2026 (Vercel Pro, crons activos, fix picks mobile, nuevo desempate tiros acumulados)
+**Última actualización:** 2 de mayo de 2026 (bugs de cron corregidos en prueba en vivo, indicador de supervivencia mejorado, backfill tiros históricos)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -166,6 +166,11 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **Fix trigger `validate_pick_timing`**: permite updates del sistema después del deadline (migración `20260422000000`).
 - [ ] *(Futuro)* Respetar ventana de 24h antes de marcar `is_processed = TRUE` (`game-rules.md §6.5`). Actualmente evalúa en cuanto todos los partidos del día están `finished`.
 - [x] **Caso borde validado (27 abr):** jugador no convocado (sin fila en `player_match_stats`) → resultado `void_did_not_play` → usuario eliminado. Correcto según §4.2 E3 y §7.5. C. Hudson-Odoi no convocado vs Sunderland confirmó el comportamiento.
+- [x] **Fix (2 mayo):** `matches.update()` en `sync-live-matches` no tenía manejo de errores — fallos silenciosos dejaban partidos atascados como `live`. Ahora lanza error y loggea en `api_sync_events`.
+- [x] **Fix (2 mayo):** safety net de force-finish a las 4 horas en `sync-live-matches` — si un partido lleva más de 4h como `live` en DB desde el kickoff, se fuerza a `finished`. Cubre knockout rounds (ET + penales ≈ 3h worst case).
+- [x] **Fix (2 mayo):** `evaluate-picks` podía marcar `is_processed = TRUE` antes de evaluar picks de partidos tardíos (race condition). Ahora verifica que no queden picks bloqueados sin resultado antes de cerrar el día.
+- [x] **Backfill (2 mayo):** `total_shots_accumulated` en `user_status` no incluía históricos anteriores al 1 mayo. Corregido con UPDATE de backfill.
+- [ ] **⚠️ Pendiente Mundial:** al cargar el fixture completo (~1 semana antes del 11 jun), hacer prueba end-to-end de un día completo para verificar que sync y evaluate-picks manejan días con partidos de 1pm a 10pm. Los horarios del Mundial varían mucho por grupos y fases.
 
 ---
 

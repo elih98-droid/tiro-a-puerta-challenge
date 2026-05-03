@@ -281,12 +281,15 @@ function LiveCard({
     }
   }, [matchId, playerId])
 
-  // Solo polling cuando el partido está en curso
+  // Fetch immediately on mount and whenever status changes (not finished).
+  // This fixes the case where the component starts as 'scheduled' and the
+  // match goes live while the component is mounted — without an immediate
+  // fetch, polling would never start and the card would be stuck at POR INICIAR.
   useEffect(() => {
-    if (data.status === 'live') {
-      const id = setInterval(fetchLive, POLL_MS)
-      return () => clearInterval(id)
-    }
+    if (data.status === 'finished') return
+    fetchLive() // get current state right away
+    const id = setInterval(fetchLive, POLL_MS)
+    return () => clearInterval(id)
   }, [data.status, fetchLive])
 
   const isLive       = data.status === 'live'

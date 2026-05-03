@@ -75,8 +75,10 @@ export default async function DashboardPage() {
         .single()
     : { data: null }
 
-  // ── Datos iniciales del partido en vivo (SSR para evitar flash) ──
-  // Solo cuando el usuario ya hizo pick y el deadline pasó
+  // ── Datos iniciales del partido (SSR para evitar flash) ──
+  // Siempre se trae si hay pick con match_id — antes estaba gateado por
+  // effective_deadline <= now, pero eso causaba que el status llegara como null
+  // (default 'scheduled') y el polling del cliente nunca arrancaba.
   type MatchRow = {
     status: string
     match_minute: number | null
@@ -90,12 +92,7 @@ export default async function DashboardPage() {
   let initialMatch: MatchRow | null = null
   let initialStats: StatsRow | null = null
 
-  if (
-    todayPick?.match_id &&
-    todayPick?.player_id &&
-    todayPick?.effective_deadline &&
-    new Date(todayPick.effective_deadline as string) <= new Date()
-  ) {
+  if (todayPick?.match_id && todayPick?.player_id) {
     const [{ data: m }, { data: s }] = await Promise.all([
       supabase
         .from('matches')

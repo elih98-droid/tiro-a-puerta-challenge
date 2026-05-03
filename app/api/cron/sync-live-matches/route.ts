@@ -60,8 +60,17 @@ function isAuthorized(request: NextRequest): boolean {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** How many hours after kickoff we still try to sync stats (for late corrections). */
-const SYNC_WINDOW_HOURS = 24;
+/**
+ * How many hours after kickoff we still re-sync finished matches.
+ * This is a grace period for late stat corrections from the API.
+ *
+ * ⚠️ Keep this SHORT. With the cron running every minute:
+ *   N finished matches × 2 API calls × 60 min × SYNC_WINDOW_HOURS = daily budget drain.
+ * 24h was the original value and caused us to blow through 7,500 req/day limit
+ * when there were matches on consecutive days (finished yesterday kept syncing all day today).
+ * 2h is enough for any real stat correction window API-Football offers.
+ */
+const SYNC_WINDOW_HOURS = 2;
 
 /**
  * Max hours a match can stay 'live' in our DB before we force it to 'finished'.

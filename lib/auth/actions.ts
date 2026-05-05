@@ -4,6 +4,29 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { sendEmail } from '@/lib/email/send'
+import { newSignupEmailTemplate } from '@/lib/email/templates/new-signup'
+
+// ─── Email helper ──────────────────────────────────────────────────────────────
+
+async function notifyAdminOfNewSignup(username: string, email: string): Promise<void> {
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (!adminEmail) return // Skip silently if not configured
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiro-a-puerta.vercel.app'
+  const { subject, html } = newSignupEmailTemplate({
+    username,
+    email,
+    registeredAt: new Date().toISOString(),
+    approvalsUrl: `${appUrl}/admin/approvals`,
+  })
+
+  const result = await sendEmail({ to: adminEmail, subject, html })
+  if (!result.ok) {
+    // Non-critical — log and continue
+    console.error('[notifyAdminOfNewSignup] Failed:', result.error)
+  }
+}
 
 // ──────────────────────────────────────────────
 // Types
@@ -95,6 +118,9 @@ export async function signUp(
     }
     return { error: 'Error al crear la cuenta. Inténtalo de nuevo.' }
   }
+
+  // Notify admin of new signup pending approval (fire-and-forget)
+  notifyAdminOfNewSignup(username, email).catch(() => {})
 
   // Supabase sent a confirmation email. Direct the user to check their inbox.
   redirect('/verify-email')
@@ -227,6 +253,9 @@ export async function completeProfile(
   // only allows inserts from the service role (system operations).
   const adminClient = createAdminClient()
   await adminClient.from('user_status').insert({ user_id: user.id })
+
+  // Notify admin of new signup pending approval (fire-and-forget)
+  notifyAdminOfNewSignup(username, user.email!).catch(() => {})
 
   redirect('/pending-approval')
 }

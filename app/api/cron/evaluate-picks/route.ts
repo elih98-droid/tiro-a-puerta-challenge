@@ -36,6 +36,8 @@
 
 import type { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendEmail } from "@/lib/email/send";
+import { eliminationEmailTemplate } from "@/lib/email/templates/elimination";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,6 +66,15 @@ interface EvaluatedPick {
   shotsOnTarget: number;
   goals: number;
   eliminationReason: EliminationReason | null;
+  // Populated after evaluation — used for the elimination email
+  playerId?: number;
+}
+
+// Collects data needed to send elimination emails after a day is processed
+interface PendingEliminationEmail {
+  userId: string;
+  reason: EliminationReason | "no_pick";
+  playerId?: number; // undefined for no_pick case
 }
 
 // ─── Supabase admin client ────────────────────────────────────────────────────
@@ -310,7 +321,7 @@ async function applyResult(
  * Finds alive users who have no locked pick for this match_day
  * and eliminates them (game-rules.md §4.2, E1 — 'no_pick').
  */
-async function eliminateNoPick(matchDayId: number): Promise<number> {
+async function eliminateNoPickWithIds(matchDayId: number): Promise<{ count: number; userIds: string[] }> {
   // Get all currently alive users
   const { data: aliveUsers, error: aliveError } = await supabase
     .from("user_status")
@@ -318,7 +329,7 @@ async function eliminateNoPick(matchDayId: number): Promise<number> {
     .eq("is_alive", true);
 
   if (aliveError) throw new Error(`Failed to fetch alive users: ${aliveError.message}`);
-  if (!aliveUsers?.length) return 0;
+  if (!aliveUsers?.length) return { count: 0, userIds: [] };
 
   // Get user_ids that have a locked pick for this day
   const { data: pickedUsers, error: pickedError } = await supabase
@@ -336,7 +347,7 @@ async function eliminateNoPick(matchDayId: number): Promise<number> {
     .map((u) => u.user_id)
     .filter((id) => !pickedUserIds.has(id));
 
-  if (!noPickUserIds.length) return 0;
+  if (!noPickUserIds.length) return { count: 0, userIds: [] };
 
   // Eliminate all of them at once
   const { error: eliminateError } = await supabase
@@ -353,7 +364,83 @@ async function eliminateNoPick(matchDayId: number): Promise<number> {
     throw new Error(`Failed to eliminate no-pick users: ${eliminateError.message}`);
   }
 
-  return noPickUserIds.length;
+  return { count: noPickUserIds.length, userIds: noPickUserIds };
+}
+
+// ─── Email: notify eliminated users ──────────────────────────────────────────
+
+/**
+ * Fetches user data and sends elimination emails in batch.
+ * Runs after the day is evaluated — errors here are logged but never throw,
+ * so a failed email never blocks the cron from completing.
+ */
+async function sendEliminationEmails(
+  eliminations: PendingEliminationEmail[],
+  matchDate: string
+): Promise<void> {
+  if (!eliminations.length) return;
+
+  const userIds = [...new Set(eliminations.map((e) => e.userId))];
+  const playerIds = [...new Set(
+    eliminations.filter((e) => e.playerId != null).map((e) => e.playerId!)
+  )];
+
+  // Fetch user emails + usernames + days survived + goals from public.users
+  // joined with user_status in two separate queries (Supabase JS doesn't join)
+  const [usersResult, statusResult, playersResult] = await Promise.all([
+    supabase.from("users").select("id, email, username").in("id", userIds),
+    supabase
+      .from("user_status")
+      .select("user_id, days_survived, total_goals_accumulated")
+      .in("user_id", userIds),
+    playerIds.length
+      ? supabase.from("players").select("id, name").in("id", playerIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (usersResult.error) {
+    console.error("[sendEliminationEmails] Failed to fetch users:", usersResult.error.message);
+    return;
+  }
+
+  const userById = new Map(
+    (usersResult.data ?? []).map((u) => [u.id, u])
+  );
+  const statusByUserId = new Map(
+    (statusResult.data ?? []).map((s) => [s.user_id, s])
+  );
+  const playerById = new Map(
+    (playersResult.data ?? []).map((p) => [p.id, p])
+  );
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tiro-a-puerta.vercel.app";
+
+  for (const elimination of eliminations) {
+    const user = userById.get(elimination.userId);
+    const status = statusByUserId.get(elimination.userId);
+
+    if (!user?.email) {
+      console.warn(`[sendEliminationEmails] No email found for user ${elimination.userId}`);
+      continue;
+    }
+
+    const player = elimination.playerId ? playerById.get(elimination.playerId) : undefined;
+    const { subject, html } = eliminationEmailTemplate({
+      username: user.username,
+      playerName: player?.name,
+      matchDate,
+      reason: elimination.reason,
+      daysSurvived: status?.days_survived ?? 0,
+      goalsAccumulated: status?.total_goals_accumulated ?? 0,
+    });
+
+    const result = await sendEmail({ to: user.email, subject, html });
+    if (!result.ok) {
+      console.error(`[sendEliminationEmails] Failed to send to ${user.email}: ${result.error}`);
+    } else {
+      console.log(`[sendEliminationEmails] Sent to @${user.username} (${user.email})`);
+    }
+  }
 }
 
 // ─── Core: process a single match_day ────────────────────────────────────────
@@ -386,6 +473,9 @@ async function processMatchDay(day: {
 
   let evaluated = 0;
 
+  // Accumulate data for elimination emails (sent at end of day processing)
+  const pendingEmails: PendingEliminationEmail[] = [];
+
   // Evaluate each pick sequentially
   for (const pick of picks ?? []) {
     const matchStatus = matchStatusById.get(pick.match_id) ?? "finished";
@@ -399,6 +489,15 @@ async function processMatchDay(day: {
         `Pick ${pick.id} (user ${pick.user_id}): ${result.result}` +
         (result.shotsOnTarget > 0 ? ` | shots: ${result.shotsOnTarget}, goals: ${result.goals}` : "")
       );
+
+      // Queue elimination email if the user was eliminated
+      if (result.result === "eliminated" || result.result === "void_did_not_play") {
+        pendingEmails.push({
+          userId: result.userId,
+          reason: result.eliminationReason!,
+          playerId: pick.player_id,
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`Error evaluating pick ${pick.id}: ${message}`);
@@ -408,10 +507,17 @@ async function processMatchDay(day: {
 
   // Eliminate alive users who had no pick today (E1)
   let noPickEliminated = 0;
+  let noPickUserIds: string[] = [];
   try {
-    noPickEliminated = await eliminateNoPick(day.id);
+    const result = await eliminateNoPickWithIds(day.id);
+    noPickEliminated = result.count;
+    noPickUserIds = result.userIds;
     if (noPickEliminated > 0) {
       console.log(`Eliminated ${noPickEliminated} user(s) for missing pick on day ${day.id}.`);
+      // Queue elimination emails for no-pick users
+      for (const userId of noPickUserIds) {
+        pendingEmails.push({ userId, reason: "no_pick" });
+      }
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -456,6 +562,13 @@ async function processMatchDay(day: {
     console.warn(
       `Day ${day.id} had ${errors.length} error(s) — not marking as processed. Will retry next run.`
     );
+  }
+
+  // Send elimination emails for this day (fire-and-forget — never blocks the cron)
+  if (pendingEmails.length > 0) {
+    sendEliminationEmails(pendingEmails, day.match_date).catch((err) => {
+      console.error("[processMatchDay] sendEliminationEmails threw unexpectedly:", err);
+    });
   }
 
   return { evaluated, noPickEliminated, errors };

@@ -57,17 +57,31 @@ export async function approveUser(userId: string): Promise<void> {
 
 /**
  * Rejects and permanently deletes a pending user account.
- * Deleting from auth.users cascades to public.users automatically.
+ * We delete from public.users first (which cascades to user_status, picks, etc.)
+ * and then from auth.users, to avoid FK constraint errors during the cascade.
  */
 export async function rejectUser(userId: string): Promise<void> {
   await requireAdmin()
 
   const adminClient = createAdminClient()
 
-  const { error } = await adminClient.auth.admin.deleteUser(userId)
+  // Step 1: delete from public.users — cascades to user_status and any other
+  // dependent tables in the public schema.
+  const { error: publicError } = await adminClient
+    .from('users')
+    .delete()
+    .eq('id', userId)
 
-  if (error) {
-    throw new Error(`Failed to reject user: ${error.message}`)
+  if (publicError) {
+    throw new Error(`Failed to reject user: ${publicError.message}`)
+  }
+
+  // Step 2: delete from auth.users — now that public refs are gone, this
+  // should succeed without FK constraint errors.
+  const { error: authError } = await adminClient.auth.admin.deleteUser(userId)
+
+  if (authError) {
+    throw new Error(`Failed to delete auth user: ${authError.message}`)
   }
 
   revalidatePath('/admin/approvals')

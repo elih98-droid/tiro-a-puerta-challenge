@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 4 de mayo de 2026 (emails transaccionales implementados, panel admin mobile-first, fix rejectUser FK cascade)
+**Última actualización:** 4 de mayo de 2026 (emails, Sentry, Vercel Analytics, panel admin mobile, fix rejectUser)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -231,7 +231,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 
 #### 13. Monitoreo y operación
 - [x] Configurar Sentry para errores en producción — SDK instalado, DSN configurado en Vercel, alertas por email activadas.
-- [ ] Configurar Vercel Analytics.
+- [x] Configurar Vercel Analytics — habilitado en Vercel Pro, `<Analytics />` en `app/layout.tsx`.
 - [ ] Alertas de DB: queries lentas, conexiones al límite, fallos de sync con API (`database-schema.md §9.4`).
 - [ ] Remover página `/health-check` antes de producción.
 
@@ -282,7 +282,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | 🔄 Parcial (eliminación + recordatorio + admin listos; verificación/reset pendiente) |
 | Tests críticos | ⏳ Pendiente |
-| Monitoreo y producción | ⏳ Pendiente |
+| Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos; health-check pendiente de remover) |
 | Vercel Pro + crons activos | ✅ Completo (1 mayo) |
 
 ---

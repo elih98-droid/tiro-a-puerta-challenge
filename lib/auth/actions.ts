@@ -119,8 +119,9 @@ export async function signUp(
     return { error: 'Error al crear la cuenta. Inténtalo de nuevo.' }
   }
 
-  // Notify admin of new signup pending approval (fire-and-forget)
-  notifyAdminOfNewSignup(username, email).catch(() => {})
+  // Notify admin of new signup pending approval (await before redirect —
+  // fire-and-forget doesn't work here because redirect() throws internally)
+  await notifyAdminOfNewSignup(username, email)
 
   // Supabase sent a confirmation email. Direct the user to check their inbox.
   redirect('/verify-email')
@@ -254,8 +255,8 @@ export async function completeProfile(
   const adminClient = createAdminClient()
   await adminClient.from('user_status').insert({ user_id: user.id })
 
-  // Notify admin of new signup pending approval (fire-and-forget)
-  notifyAdminOfNewSignup(username, user.email!).catch(() => {})
+  // Notify admin of new signup pending approval
+  await notifyAdminOfNewSignup(username, user.email!)
 
   redirect('/pending-approval')
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Bebas_Neue, Archivo, Archivo_Narrow, JetBrains_Mono } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 // Brand typography — matches the Claude Design system
@@ -48,6 +49,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[#0B0D18] text-white">
         {children}
+        <Analytics />
       </body>
     </html>
   )

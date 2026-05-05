@@ -65,8 +65,19 @@ export async function rejectUser(userId: string): Promise<void> {
 
   const adminClient = createAdminClient()
 
-  // Step 1: delete from public.users — cascades to user_status and any other
-  // dependent tables in the public schema.
+  // Delete in FK-safe order: child tables first, then parent tables.
+  // user_status.user_id → users.id doesn't have ON DELETE CASCADE,
+  // so we must delete it manually before deleting the user row.
+
+  const { error: statusError } = await adminClient
+    .from('user_status')
+    .delete()
+    .eq('user_id', userId)
+
+  if (statusError) {
+    throw new Error(`Failed to delete user_status: ${statusError.message}`)
+  }
+
   const { error: publicError } = await adminClient
     .from('users')
     .delete()
@@ -76,8 +87,6 @@ export async function rejectUser(userId: string): Promise<void> {
     throw new Error(`Failed to reject user: ${publicError.message}`)
   }
 
-  // Step 2: delete from auth.users — now that public refs are gone, this
-  // should succeed without FK constraint errors.
   const { error: authError } = await adminClient.auth.admin.deleteUser(userId)
 
   if (authError) {

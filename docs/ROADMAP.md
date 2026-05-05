@@ -230,7 +230,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [ ] Tests para lógica de desempate (goles acumulados, `game-rules.md §5`).
 
 #### 13. Monitoreo y operación
-- [ ] Configurar Sentry para errores en producción.
+- [x] Configurar Sentry para errores en producción — SDK instalado, DSN configurado en Vercel, alertas por email activadas.
 - [ ] Configurar Vercel Analytics.
 - [ ] Alertas de DB: queries lentas, conexiones al límite, fallos de sync con API (`database-schema.md §9.4`).
 - [ ] Remover página `/health-check` antes de producción.

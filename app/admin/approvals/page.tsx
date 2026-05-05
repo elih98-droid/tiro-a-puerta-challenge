@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { approveUser, rejectUser } from '@/lib/admin/actions'
 
-// Format a UTC timestamp to a readable date in CDMX timezone.
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString('es-MX', {
     timeZone: 'America/Mexico_City',
@@ -13,7 +12,6 @@ function formatDate(iso: string) {
 export default async function ApprovalsPage() {
   const supabase = await createClient()
 
-  // Fetch users that are pending approval (not yet approved, not deleted).
   const { data: pendingUsers, error } = await supabase
     .from('users')
     .select('id, username, email, created_at')
@@ -26,65 +24,149 @@ export default async function ApprovalsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-1">
-          Aprobaciones pendientes
-        </h1>
-        <p className="text-gray-500 mb-8 text-sm">
-          {pendingUsers.length === 0
-            ? 'No hay cuentas pendientes.'
-            : `${pendingUsers.length} cuenta${pendingUsers.length !== 1 ? 's' : ''} esperando aprobación.`}
-        </p>
+    <main style={{ minHeight: '100vh', backgroundColor: '#0B0D18', padding: '24px 16px' }}>
+      <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
-        {pendingUsers.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">Usuario</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Registro</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {pendingUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {user.username}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{user.email}</td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {formatDate(user.created_at)}
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-2">
-                      {/* Approve */}
-                      <form action={approveUser.bind(null, user.id)} className="inline">
-                        <button
-                          type="submit"
-                          className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
-                        >
-                          Aprobar
-                        </button>
-                      </form>
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <p style={{
+            margin: '0 0 4px',
+            fontSize: 11,
+            letterSpacing: 3,
+            color: '#C9A84C',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            fontFamily: 'var(--font-jetbrains-mono)',
+          }}>
+            Admin
+          </p>
+          <h1 style={{
+            margin: 0,
+            fontSize: 32,
+            fontWeight: 400,
+            color: '#ffffff',
+            fontFamily: 'var(--font-bebas-neue)',
+            letterSpacing: 1,
+          }}>
+            Aprobaciones
+          </h1>
+          <p style={{
+            margin: '6px 0 0',
+            fontSize: 13,
+            color: 'rgba(255,255,255,0.45)',
+          }}>
+            {pendingUsers.length === 0
+              ? 'No hay cuentas pendientes.'
+              : `${pendingUsers.length} cuenta${pendingUsers.length !== 1 ? 's' : ''} esperando aprobación`}
+          </p>
+        </div>
 
-                      {/* Reject — permanently deletes the account */}
-                      <form action={rejectUser.bind(null, user.id)} className="inline">
-                        <button
-                          type="submit"
-                          className="rounded bg-red-100 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-200"
-                        >
-                          Rechazar
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {pendingUsers.map((user) => (
+            <div
+              key={user.id}
+              style={{
+                backgroundColor: '#181C36',
+                borderRadius: 12,
+                border: '1px solid rgba(255,255,255,0.08)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* User info */}
+              <div style={{ padding: '16px 16px 12px' }}>
+                <p style={{
+                  margin: '0 0 2px',
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  fontFamily: 'var(--font-bebas-neue)',
+                  letterSpacing: 0.5,
+                }}>
+                  @{user.username}
+                </p>
+                <p style={{
+                  margin: '0 0 8px',
+                  fontSize: 13,
+                  color: 'rgba(255,255,255,0.6)',
+                  wordBreak: 'break-all',
+                }}>
+                  {user.email}
+                </p>
+                <p style={{
+                  margin: 0,
+                  fontSize: 11,
+                  color: 'rgba(255,255,255,0.35)',
+                  fontFamily: 'var(--font-jetbrains-mono)',
+                }}>
+                  {formatDate(user.created_at)}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                borderTop: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <form action={approveUser.bind(null, user.id)}>
+                  <button
+                    type="submit"
+                    style={{
+                      width: '100%',
+                      padding: '14px 0',
+                      background: 'linear-gradient(135deg, #1a5c1a, #3CAC3B)',
+                      border: 'none',
+                      borderRight: '1px solid rgba(255,255,255,0.06)',
+                      color: '#ffffff',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      letterSpacing: 1,
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-archivo)',
+                    }}
+                  >
+                    ✓ Aprobar
+                  </button>
+                </form>
+
+                <form action={rejectUser.bind(null, user.id)}>
+                  <button
+                    type="submit"
+                    style={{
+                      width: '100%',
+                      padding: '14px 0',
+                      background: 'rgba(230,29,37,0.12)',
+                      border: 'none',
+                      color: '#E61D25',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      letterSpacing: 1,
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-archivo)',
+                    }}
+                  >
+                    ✕ Rechazar
+                  </button>
+                </form>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {pendingUsers.length === 0 && (
+          <div style={{
+            textAlign: 'center',
+            padding: '48px 0',
+            color: 'rgba(255,255,255,0.25)',
+            fontSize: 14,
+          }}>
+            Todo al día 👌
           </div>
         )}
+
       </div>
     </main>
   )

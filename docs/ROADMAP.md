@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 2 de mayo de 2026 (bugs de cron corregidos en prueba en vivo, indicador de supervivencia mejorado, backfill tiros históricos)
+**Última actualización:** 4 de mayo de 2026 (emails transaccionales implementados, panel admin mobile-first, fix rejectUser FK cascade)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -197,13 +197,15 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 
 ### 🟡 PRIORIDAD MEDIA — Comunicaciones y UX completa
 
-#### 9. Emails transaccionales (Resend)
-- [ ] Configurar Resend y definir dominio de envío.
-- [ ] Email de verificación de cuenta.
-- [ ] Email de recuperación de contraseña.
-- [ ] Email de notificación de eliminación (con razón específica, `game-rules.md §12.1`).
-- [ ] Email de recordatorio de pick pendiente (N horas antes del deadline, ventana exacta por definir — `game-rules.md §13.5`).
-- [ ] Email de notificaciones críticas (cambios de reglas, etc.).
+#### 9. Emails transaccionales (Resend) ✅ (parcial)
+- [x] Configurar Resend — SDK instalado, API key en Vercel, `lib/email/` creado.
+- [x] Email de notificación de eliminación — se dispara desde `evaluate-picks` con razón, días y goles. (`game-rules.md §12.1`)
+- [x] Email de recordatorio de pick pendiente — cron hourly `send-pick-reminders`, 2h antes del último partido. (`game-rules.md §13.5`)
+- [x] Email al admin de nuevo registro — se dispara en `signUp` y `completeProfile`.
+- [ ] Email de verificación de cuenta — actualmente lo manda Supabase con template genérico. Personalizar con Resend y template de marca.
+- [ ] Email de recuperación de contraseña — ídem, actualmente template genérico de Supabase.
+- [ ] Email de notificaciones críticas (cambios de reglas, suspensión del torneo, etc.).
+- [ ] Configurar dominio propio de envío en Resend (actualmente usa `onboarding@resend.dev`). Requiere dominio personalizado.
 
 #### 10. Perfil de usuario
 - [ ] Página de perfil (`/profile`): cambiar username, gestionar marketing emails opt-in.
@@ -239,9 +241,10 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **App en producción** — `tiro-a-puerta.vercel.app` funcionando. Login, diseño y navegación verificados.
 - [x] **Fix Site URL de Supabase** — corregido a `https://tiro-a-puerta.vercel.app`. Links de confirmación de email y reset apuntan a producción. Redirect URLs con wildcard configuradas para prod y localhost.
 - [ ] Configurar dominio personalizado.
+- [ ] **Custom Domain en Supabase** (plan Pro de Supabase) — para que el popup de Google OAuth muestre "Tiro a Puerta Challenge" en lugar del subdominio de Supabase. Requiere dominio propio.
 - [x] **Upgrade a Vercel Pro** — plan activo desde 1 de mayo. Cron Jobs reactivados en `vercel.json` (`* * * * *`).
 - [ ] Configurar backups de Supabase más frecuentes durante el torneo (`database-schema.md §9.3`).
-- [ ] **Desactivar branch protection en GitHub** — el usuario trabaja solo, push directo a `main` es suficiente. Ir a GitHub → Settings → Branches → eliminar regla de `main`.
+- [x] **Desactivar branch protection en GitHub** — hecho el 4 de mayo. Push directo a `main`.
 
 ---
 
@@ -277,7 +280,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Diseño visual (tareas 8–9) | ✅ Completo — todas las pantallas + responsividad desktop |
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
-| Emails transaccionales | ⏳ Pendiente |
+| Emails transaccionales | 🔄 Parcial (eliminación + recordatorio + admin listos; verificación/reset pendiente) |
 | Tests críticos | ⏳ Pendiente |
 | Monitoreo y producción | ⏳ Pendiente |
 | Vercel Pro + crons activos | ✅ Completo (1 mayo) |

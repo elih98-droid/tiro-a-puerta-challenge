@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 5 de mayo de 2026 (dominio tiroapuerta.mx, emails con marca completos)
+**Última actualización:** 5 de mayo de 2026 (dominio, emails completos, /pending-approval rediseñado, email aprobación verificado)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -239,8 +239,8 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 #### 14. Despliegue y configuración de producción
 - [x] Crear proyecto en Vercel y conectar el repo de GitHub (`elih98-droid/tiro-a-puerta-challenge`, rama `main`).
 - [x] Configurar variables de entorno en Vercel (5 vars: Supabase URL/anon/service role, API-Football key, CRON_SECRET).
-- [x] **App en producción** — `tiro-a-puerta.vercel.app` funcionando. Login, diseño y navegación verificados.
-- [x] **Fix Site URL de Supabase** — corregido a `https://tiro-a-puerta.vercel.app`. Links de confirmación de email y reset apuntan a producción. Redirect URLs con wildcard configuradas para prod y localhost.
+- [x] **App en producción** — `tiroapuerta.mx` funcionando con dominio propio.
+- [x] **Fix Site URL de Supabase** — corregido a `https://tiroapuerta.mx`. Redirect URLs con wildcard configuradas para prod y localhost.
 - [x] **Dominio personalizado** — `tiroapuerta.mx` comprado y configurado. Vercel apunta al dominio. `www` hace redirect 301 a raíz. `NEXT_PUBLIC_APP_URL` y Supabase Site URL actualizados. App live en `https://tiroapuerta.mx`.
 - [ ] **Custom Domain en Supabase** (plan Pro de Supabase) — para que el popup de Google OAuth muestre "Tiro a Puerta Challenge" en lugar del subdominio de Supabase. Requiere dominio propio ✓ (ya tenemos `tiroapuerta.mx`), falta upgrade a Supabase Pro.
 - [x] **Upgrade a Vercel Pro** — plan activo desde 1 de mayo. Cron Jobs reactivados en `vercel.json` (`* * * * *`).

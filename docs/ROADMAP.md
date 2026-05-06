@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 4 de mayo de 2026 (emails, Sentry, Vercel Analytics, panel admin mobile, fix rejectUser)
+**Última actualización:** 5 de mayo de 2026 (dominio tiroapuerta.mx, emails con marca completos)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -202,10 +202,11 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Email de notificación de eliminación — se dispara desde `evaluate-picks` con razón, días y goles. (`game-rules.md §12.1`)
 - [x] Email de recordatorio de pick pendiente — cron hourly `send-pick-reminders`, 2h antes del último partido. (`game-rules.md §13.5`)
 - [x] Email al admin de nuevo registro — se dispara en `signUp` y `completeProfile`.
-- [ ] Email de verificación de cuenta — actualmente lo manda Supabase con template genérico. Personalizar con Resend y template de marca.
-- [ ] Email de recuperación de contraseña — ídem, actualmente template genérico de Supabase.
+- [x] Email de cuenta aprobada — se dispara desde `approveUser` en `lib/admin/actions.ts`. Template `account-approved.ts` con identidad Dirección 3: banner verde, reglas del juego, CTA "Entrar al torneo".
+- [x] Email de verificación de cuenta — template con marca en `lib/email/templates/supabase/confirm-signup.html`. Pegado en Supabase Dashboard → Auth → Email Templates → Confirm signup. Subject: "Confirma tu cuenta — Tiro a Puerta Challenge".
+- [x] Email de recuperación de contraseña — template con marca en `lib/email/templates/supabase/reset-password.html`. Pegado en Supabase Dashboard → Auth → Email Templates → Reset password. Subject: "Recupera tu contraseña — Tiro a Puerta Challenge".
+- [x] Configurar dominio propio de envío en Resend — `tiroapuerta.mx` verificado. `EMAIL_FROM=no-reply@tiroapuerta.mx` en Vercel. DNS configurado via Cloudflare auto-configure.
 - [ ] Email de notificaciones críticas (cambios de reglas, suspensión del torneo, etc.).
-- [ ] Configurar dominio propio de envío en Resend (actualmente usa `onboarding@resend.dev`). Requiere dominio personalizado.
 
 #### 10. Perfil de usuario
 - [ ] Página de perfil (`/profile`): cambiar username, gestionar marketing emails opt-in.
@@ -240,8 +241,8 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Configurar variables de entorno en Vercel (5 vars: Supabase URL/anon/service role, API-Football key, CRON_SECRET).
 - [x] **App en producción** — `tiro-a-puerta.vercel.app` funcionando. Login, diseño y navegación verificados.
 - [x] **Fix Site URL de Supabase** — corregido a `https://tiro-a-puerta.vercel.app`. Links de confirmación de email y reset apuntan a producción. Redirect URLs con wildcard configuradas para prod y localhost.
-- [ ] Configurar dominio personalizado.
-- [ ] **Custom Domain en Supabase** (plan Pro de Supabase) — para que el popup de Google OAuth muestre "Tiro a Puerta Challenge" en lugar del subdominio de Supabase. Requiere dominio propio.
+- [x] **Dominio personalizado** — `tiroapuerta.mx` comprado y configurado. Vercel apunta al dominio. `www` hace redirect 301 a raíz. `NEXT_PUBLIC_APP_URL` y Supabase Site URL actualizados. App live en `https://tiroapuerta.mx`.
+- [ ] **Custom Domain en Supabase** (plan Pro de Supabase) — para que el popup de Google OAuth muestre "Tiro a Puerta Challenge" en lugar del subdominio de Supabase. Requiere dominio propio ✓ (ya tenemos `tiroapuerta.mx`), falta upgrade a Supabase Pro.
 - [x] **Upgrade a Vercel Pro** — plan activo desde 1 de mayo. Cron Jobs reactivados en `vercel.json` (`* * * * *`).
 - [ ] Configurar backups de Supabase más frecuentes durante el torneo (`database-schema.md §9.3`).
 - [x] **Desactivar branch protection en GitHub** — hecho el 4 de mayo. Push directo a `main`.
@@ -280,7 +281,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Diseño visual (tareas 8–9) | ✅ Completo — todas las pantallas + responsividad desktop |
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
-| Emails transaccionales | 🔄 Parcial (eliminación + recordatorio + admin listos; verificación/reset pendiente) |
+| Emails transaccionales | ✅ Completo — 6 emails con marca, dominio propio `tiroapuerta.mx` |
 | Tests críticos | ⏳ Pendiente |
 | Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos; health-check pendiente de remover) |
 | Vercel Pro + crons activos | ✅ Completo (1 mayo) |

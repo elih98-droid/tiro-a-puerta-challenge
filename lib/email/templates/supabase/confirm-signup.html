@@ -1,0 +1,92 @@
+<!--
+  Template: Confirm Signup (verificación de cuenta)
+  Destino: Supabase Dashboard → Authentication → Email Templates → Confirm signup
+  Variable de Supabase: {{ .ConfirmationURL }} — Supabase reemplaza esto con el link real + token.
+
+  Instrucciones:
+  1. Copia todo el contenido de este archivo.
+  2. Pégalo en Supabase Dashboard → Authentication → Email Templates → Confirm signup → Body.
+  3. En el campo Subject escribe: Confirma tu cuenta — Tiro a Puerta Challenge
+  4. Guarda cambios.
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#0B0D18;font-family:'Arial',sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0B0D18;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width:480px;background-color:#181C36;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1B2566,#2A398D);padding:28px 32px;text-align:center;border-bottom:1px solid rgba(201,168,76,0.3);">
+              <p style="margin:0;font-size:11px;letter-spacing:3px;color:#C9A84C;font-weight:700;text-transform:uppercase;">TIRO A PUERTA</p>
+              <p style="margin:4px 0 0;font-size:9px;letter-spacing:2px;color:rgba(201,168,76,0.7);text-transform:uppercase;">CHALLENGE · MEX · USA · CAN 2026</p>
+            </td>
+          </tr>
+
+          <!-- Blue banner -->
+          <tr>
+            <td style="background-color:#2A398D;padding:14px 32px;text-align:center;">
+              <p style="margin:0;font-size:13px;font-weight:700;color:#fff;letter-spacing:2px;text-transform:uppercase;">✉ CONFIRMA TU CUENTA</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+
+              <p style="margin:0 0 20px;font-size:15px;color:rgba(255,255,255,0.85);line-height:1.6;">
+                Gracias por registrarte. Para activar tu cuenta y poder participar en el torneo, confirma tu dirección de email con el botón de abajo.
+              </p>
+
+              <!-- Info box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:8px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:14px 20px;">
+                    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;">
+                      Este enlace es válido por <strong style="color:#C9A84C;">24 horas</strong>. Si no creaste esta cuenta, puedes ignorar este mensaje.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#2A398D,#1B2566);color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:8px;border:1.5px solid #C9A84C;letter-spacing:1px;text-transform:uppercase;">
+                      Confirmar email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fallback link -->
+              <p style="margin:24px 0 0;font-size:11px;color:rgba(255,255,255,0.3);text-align:center;line-height:1.6;">
+                Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                <span style="color:rgba(255,255,255,0.45);word-break:break-all;">{{ .ConfirmationURL }}</span>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.08);text-align:center;">
+              <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.3);">
+                Este es un mensaje automático. No respondas a este correo.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

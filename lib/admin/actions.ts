@@ -67,13 +67,22 @@ export async function approveUser(userId: string): Promise<void> {
   }
 
   // Send approval email — non-blocking, a failure here doesn't roll back the approval.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiroapuerta.mx'
-  const { subject, html } = accountApprovedEmailTemplate({
-    username: userData.username,
-    loginUrl: `${appUrl}/login`,
-  })
+  if (!userData.email) {
+    console.error(`[approveUser] No email found for user ${userId} (@${userData.username}) — skipping email`)
+  } else {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiroapuerta.mx'
+    const { subject, html } = accountApprovedEmailTemplate({
+      username: userData.username,
+      loginUrl: `${appUrl}/login`,
+    })
 
-  await sendEmail({ to: userData.email, subject, html })
+    const emailResult = await sendEmail({ to: userData.email, subject, html })
+    if (!emailResult.ok) {
+      console.error(`[approveUser] Failed to send approval email to ${userData.email}:`, emailResult.error)
+    } else {
+      console.log(`[approveUser] Approval email sent to ${userData.email} (@${userData.username})`)
+    }
+  }
 
   revalidatePath('/admin/approvals')
 }

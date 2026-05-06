@@ -67,7 +67,7 @@ export async function approveUser(userId: string): Promise<void> {
   }
 
   // Send approval email — non-blocking, a failure here doesn't roll back the approval.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiro-a-puerta.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiroapuerta.mx'
   const { subject, html } = accountApprovedEmailTemplate({
     username: userData.username,
     loginUrl: `${appUrl}/login`,

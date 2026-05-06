@@ -13,7 +13,7 @@ async function notifyAdminOfNewSignup(username: string, email: string): Promise<
   const adminEmail = process.env.ADMIN_EMAIL
   if (!adminEmail) return // Skip silently if not configured
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiro-a-puerta.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiroapuerta.mx'
   const { subject, html } = newSignupEmailTemplate({
     username,
     email,

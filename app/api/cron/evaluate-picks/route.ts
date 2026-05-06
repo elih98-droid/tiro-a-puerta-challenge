@@ -413,7 +413,7 @@ async function sendEliminationEmails(
     (playersResult.data ?? []).map((p) => [p.id, p])
   );
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tiro-a-puerta.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tiroapuerta.mx";
 
   for (const elimination of eliminations) {
     const user = userById.get(elimination.userId);

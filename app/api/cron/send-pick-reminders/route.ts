@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
     return Response.json({ ok: false, error: usersError.message }, { status: 500 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tiro-a-puerta.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tiroapuerta.mx";
   const pickUrl = `${appUrl}/pick`;
 
   let sent = 0;

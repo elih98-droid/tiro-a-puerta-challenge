@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 5 de mayo de 2026 (dominio, emails completos, /pending-approval rediseñado, email aprobación verificado)
+**Última actualización:** 5 de mayo de 2026 (dominio, emails, pending-approval, fixes evaluate-picks, UX/performance)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -237,6 +237,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Configurar Vercel Analytics — habilitado en Vercel Pro, `<Analytics />` en `app/layout.tsx`.
 - [ ] Alertas de DB: queries lentas, conexiones al límite, fallos de sync con API (`database-schema.md §9.4`).
 - [ ] Remover página `/health-check` antes de producción.
+- [x] **Performance UX (5 mayo):** `loading.tsx` en las 4 rutas del juego — componente compartido `PageLoading` con spinner dorado + shimmer cards. Navegación entre pestañas da feedback inmediato. `PickDayNav` convertido a Client Component con `useTransition`: spinner + dim al navegar entre días.
 
 #### 14. Despliegue y configuración de producción
 - [x] Crear proyecto en Vercel y conectar el repo de GitHub (`elih98-droid/tiro-a-puerta-challenge`, rama `main`).

@@ -1,11 +1,15 @@
-import Link from 'next/link'
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useTransition } from 'react'
 import type { CSSProperties } from 'react'
 
 /**
  * components/game/pick-day-nav.tsx
  *
  * Navigation bar to move between match days on the pick page.
- * Server Component — uses Next.js <Link> for prev/next navigation.
+ * Client Component — uses useTransition to show loading feedback
+ * while the server fetches the new day's data.
  *
  * URL pattern: /pick (today) or /pick?date=YYYY-MM-DD (specific day)
  */
@@ -24,6 +28,7 @@ const BTN: CSSProperties = {
   border: '1px solid rgba(255,255,255,0.10)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   flexShrink: 0,
+  cursor: 'pointer',
 }
 
 function ChevronLeft() {
@@ -42,6 +47,19 @@ function ChevronRight() {
   )
 }
 
+function Spinner() {
+  return (
+    <div style={{
+      width: 14, height: 14,
+      borderRadius: '50%',
+      border: '2px solid rgba(201,168,76,0.2)',
+      borderTopColor: '#C9A84C',
+      animation: 'spin 0.7s linear infinite',
+      flexShrink: 0,
+    }} />
+  )
+}
+
 export function PickDayNav({
   matchDate,
   dayNumber,
@@ -49,7 +67,15 @@ export function PickDayNav({
   prevDate,
   nextDate,
 }: PickDayNavProps) {
-  // Parse at noon to avoid timezone-offset date shifts
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  const navigate = (date: string) => {
+    startTransition(() => {
+      router.push(`/pick?date=${date}`)
+    })
+  }
+
   const dateLabel = new Date(matchDate + 'T12:00:00').toLocaleDateString('es-MX', {
     weekday: 'short',
     day: 'numeric',
@@ -64,15 +90,19 @@ export function PickDayNav({
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '10px 16px 14px',
+      opacity: isPending ? 0.7 : 1,
+      transition: 'opacity 0.15s ease',
     }}>
+
       {/* Prev arrow */}
       {prevDate ? (
-        <Link
-          href={`/pick?date=${prevDate}`}
-          style={{ ...BTN, color: '#fff', textDecoration: 'none' }}
+        <button
+          onClick={() => navigate(prevDate)}
+          disabled={isPending}
+          style={{ ...BTN, color: '#fff', background: 'none', border: '1px solid rgba(255,255,255,0.10)', opacity: isPending ? 0.5 : 1 }}
         >
           <ChevronLeft />
-        </Link>
+        </button>
       ) : (
         <div style={{ ...BTN, color: 'rgba(255,255,255,0.25)', pointerEvents: 'none' }}>
           <ChevronLeft />
@@ -80,7 +110,7 @@ export function PickDayNav({
       )}
 
       {/* Date label */}
-      <div style={{ textAlign: 'center', flex: 1 }}>
+      <div style={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <div style={{
           fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
           fontSize: 28, lineHeight: 1, letterSpacing: 1.2, color: '#fff',
@@ -90,23 +120,25 @@ export function PickDayNav({
           {dateLabel}
         </div>
         <div style={{
-          marginTop: 4,
           fontFamily: 'var(--font-jetbrains-mono), monospace',
           fontSize: 9.5, letterSpacing: 1.6, textTransform: 'uppercase',
           color: '#C9A84C', fontWeight: 700,
+          display: 'flex', alignItems: 'center', gap: 6,
         }}>
+          {isPending ? <Spinner /> : null}
           {subtitle}
         </div>
       </div>
 
       {/* Next arrow */}
       {nextDate ? (
-        <Link
-          href={`/pick?date=${nextDate}`}
-          style={{ ...BTN, color: '#fff', textDecoration: 'none' }}
+        <button
+          onClick={() => navigate(nextDate)}
+          disabled={isPending}
+          style={{ ...BTN, color: '#fff', background: 'none', border: '1px solid rgba(255,255,255,0.10)', opacity: isPending ? 0.5 : 1 }}
         >
           <ChevronRight />
-        </Link>
+        </button>
       ) : (
         <div style={{ ...BTN, color: 'rgba(255,255,255,0.25)', pointerEvents: 'none' }}>
           <ChevronRight />

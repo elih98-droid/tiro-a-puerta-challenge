@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { sendEmail } from '@/lib/email/send'
+import { accountApprovedEmailTemplate } from '@/lib/email/templates/account-approved'
 
 /**
  * Verifies the currently authenticated user is an admin.
@@ -35,6 +37,7 @@ async function requireAdmin(): Promise<string> {
 
 /**
  * Approves a pending user account so they can access the game.
+ * Sends a confirmation email to the user after approval.
  */
 export async function approveUser(userId: string): Promise<void> {
   await requireAdmin()
@@ -42,6 +45,17 @@ export async function approveUser(userId: string): Promise<void> {
   // Use the admin client to bypass RLS — the regular client can only
   // update the current user's own row.
   const adminClient = createAdminClient()
+
+  // Fetch user data before approving so we can send the notification email.
+  const { data: userData, error: fetchError } = await adminClient
+    .from('users')
+    .select('username, email')
+    .eq('id', userId)
+    .single()
+
+  if (fetchError || !userData) {
+    throw new Error(`Failed to fetch user data: ${fetchError?.message}`)
+  }
 
   const { error } = await adminClient
     .from('users')
@@ -51,6 +65,15 @@ export async function approveUser(userId: string): Promise<void> {
   if (error) {
     throw new Error(`Failed to approve user: ${error.message}`)
   }
+
+  // Send approval email — non-blocking, a failure here doesn't roll back the approval.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiro-a-puerta.vercel.app'
+  const { subject, html } = accountApprovedEmailTemplate({
+    username: userData.username,
+    loginUrl: `${appUrl}/login`,
+  })
+
+  await sendEmail({ to: userData.email, subject, html })
 
   revalidatePath('/admin/approvals')
 }

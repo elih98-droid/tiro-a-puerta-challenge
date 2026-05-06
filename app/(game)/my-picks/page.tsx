@@ -28,12 +28,15 @@ const POS_COLOR: Record<string, string> = {
 
 // ─── Status resolution ────────────────────────────────────────────────────────
 
-type PickStatus = 'survived' | 'eliminated' | 'void' | 'evaluating' | 'pending'
+type PickStatus = 'survived' | 'eliminated' | 'void_cancelled' | 'void_did_not_play' | 'evaluating' | 'pending'
 
 function resolveStatus(result: string | null, isLocked: boolean): PickStatus {
   if (result === 'survived') return 'survived'
   if (result === 'eliminated') return 'eliminated'
-  if (result === 'void_cancelled_match' || result === 'void_did_not_play') return 'void'
+  // void_did_not_play → player not called up / injured → user IS eliminated, show red
+  if (result === 'void_did_not_play') return 'void_did_not_play'
+  // void_cancelled_match → match cancelled → user survives, truly voided
+  if (result === 'void_cancelled_match') return 'void_cancelled'
   if (isLocked) return 'evaluating'
   return 'pending'
 }
@@ -51,7 +54,15 @@ const STATUS_CONFIG: Record<PickStatus, { label: string; color: string; bg: stri
     bg:    'rgba(230,29,37,0.12)',
     border:'rgba(230,29,37,0.4)',
   },
-  void: {
+  // Player didn't play → elimination consequence, show red like eliminated
+  void_did_not_play: {
+    label: 'ELIMINADO',
+    color: '#E61D25',
+    bg:    'rgba(230,29,37,0.12)',
+    border:'rgba(230,29,37,0.4)',
+  },
+  // Match cancelled → no consequence, truly voided
+  void_cancelled: {
     label: 'ANULADO',
     color: 'rgba(255,255,255,0.45)',
     bg:    'rgba(255,255,255,0.05)',

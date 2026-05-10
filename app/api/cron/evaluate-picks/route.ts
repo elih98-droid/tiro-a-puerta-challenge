@@ -461,15 +461,25 @@ async function processMatchDay(day: {
 
   const matchStatusById = new Map((matches ?? []).map((m) => [m.id, m.status]));
 
-  // Get all locked picks that haven't been evaluated yet, only for alive users.
+  // Get alive user IDs first — we only evaluate picks for users still in the game.
   // Eliminated users' pre-picks are skipped entirely — no result is written,
   // avoiding misleading 'survived' entries on /my-picks for already-out players.
+  const { data: aliveStatuses, error: aliveError } = await supabase
+    .from("user_status")
+    .select("user_id")
+    .eq("is_alive", true);
+
+  if (aliveError) throw new Error(`Failed to fetch alive users for day ${day.id}: ${aliveError.message}`);
+
+  const aliveUserIds = (aliveStatuses ?? []).map((s) => s.user_id);
+
+  // Get all locked picks that haven't been evaluated yet, only for alive users.
   const { data: picks, error: picksError } = await supabase
     .from("user_picks")
-    .select("id, user_id, player_id, match_id, user_status!inner(is_alive)")
+    .select("id, user_id, player_id, match_id")
     .eq("match_day_id", day.id)
     .eq("is_locked", true)
-    .eq("user_status.is_alive", true)
+    .in("user_id", aliveUserIds.length > 0 ? aliveUserIds : ["00000000-0000-0000-0000-000000000000"])
     .is("result", null);
 
   if (picksError) throw new Error(`Failed to fetch picks for day ${day.id}: ${picksError.message}`);

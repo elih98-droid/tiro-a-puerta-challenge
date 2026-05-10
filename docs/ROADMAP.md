@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 5 de mayo de 2026 (dominio, emails, pending-approval, fixes evaluate-picks, UX/performance)
+**Última actualización:** 9 de mayo de 2026 (fix crítico evaluate-picks — schema cache error)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -165,7 +165,8 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Manejo de casos borde: partido cancelado (`void_cancelled_match`), jugador que no jugó (`void_did_not_play`), usuario sin pick (`no_pick`). (`game-rules.md §7`)
 - [x] **Fix trigger `validate_pick_timing`**: permite updates del sistema después del deadline (migración `20260422000000`).
 - [ ] *(Futuro)* Respetar ventana de 24h antes de marcar `is_processed = TRUE` (`game-rules.md §6.5`). Actualmente evalúa en cuanto todos los partidos del día están `finished`.
-- [x] **Fix (5 mayo):** `evaluate-picks` evaluaba pre-picks de usuarios ya eliminados y escribía `result = 'survived'` — mostraba "SOBREVIVISTE" en /my-picks para días posteriores a la eliminación. Fix: join con `user_status!inner` + filtro `is_alive = true` en el query de picks. Probado con caso Bensimon (eliminado día 5, pre-picks días 6 y 8).
+- [x] **Fix (5 mayo):** `evaluate-picks` evaluaba pre-picks de usuarios ya eliminados y escribía `result = 'survived'` — mostraba "SOBREVIVISTE" en /my-picks para días posteriores a la eliminación. Fix original: join `user_status!inner` + filtro `is_alive = true`. **⚠️ Ese join causó un bug nuevo (ver fix 9 mayo).**
+- [x] **Fix (9 mayo):** el join `user_status!inner(is_alive)` causaba `"Could not find a relationship between 'user_picks' and 'user_status' in the schema cache"` en producción — PostgREST no expone esa FK. El cron fallaba silenciosamente en cada corrida sin evaluar nada desde el 5 mayo. Fix: reemplazado por dos queries separadas: fetch de `aliveUserIds` desde `user_status`, luego `.in("user_id", aliveUserIds)` en `user_picks`. Diagnosticado invocando el cron manualmente con curl y leyendo el error en el JSON de respuesta.
 - [x] **Fix (5 mayo):** `void_did_not_play` mostraba "ANULADO" en /my-picks — ambiguo (parecía sin consecuencias). Ahora muestra "ELIMINADO" en rojo. "ANULADO" queda solo para `void_cancelled_match`.
 - [x] **Caso borde validado (27 abr):** jugador no convocado (sin fila en `player_match_stats`) → resultado `void_did_not_play` → usuario eliminado. Correcto según §4.2 E3 y §7.5. C. Hudson-Odoi no convocado vs Sunderland confirmó el comportamiento.
 - [x] **Fix (2 mayo):** `matches.update()` en `sync-live-matches` no tenía manejo de errores — fallos silenciosos dejaban partidos atascados como `live`. Ahora lanza error y loggea en `api_sync_events`.

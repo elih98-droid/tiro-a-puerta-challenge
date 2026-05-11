@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 9 de mayo de 2026 (fix crítico evaluate-picks — schema cache error)
+**Última actualización:** 11 de mayo de 2026 (script seed-missing-matchday + reset DB para pruebas con amigos)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -104,6 +104,7 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [x] **Script de picks de prueba** (`scripts/insert-test-picks.ts`): picks del día 1 (22 abr): elias_test → Haaland (Man City FWD), El_Conde → Petrović (Bournemouth GK).
 - [x] **Prueba end-to-end**: worker verificado en vivo el 22 de abril (PL: Bournemouth vs Leeds + partido con Man City). `player_match_stats` se actualiza correctamente con `shots_on_target`, `goals`, `minutes_played`. Haaland: 1 tiro a puerta + 1 gol registrados en tiempo real.
 - [ ] *(Mundial)* Scripts de seed equivalentes para los 48 equipos, ~1,150 jugadores y 104 partidos del Mundial 2026.
+- [x] **Script `seed-missing-matchday.ts`**: agrega días/partidos faltantes sin borrar datos existentes. Editar `DATES_TO_SEED` para agregar fechas. Usado el 11 mayo para agregar Aston Villa vs Liverpool (día 15 faltante en DB).
 
 #### 3b. Precarga de datos del Mundial 2026
 *(Se ejecuta ~1 semana antes del 11 de junio)*

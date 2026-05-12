@@ -42,36 +42,19 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email/send";
 import { eliminationEmailTemplate } from "@/lib/email/templates/elimination";
+import {
+  evaluatePickResult,
+  type EvaluatedPick,
+  type EliminationReason,
+} from "@/lib/game/evaluate-pick";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type PickResult =
-  | "survived"
-  | "eliminated"
-  | "void_cancelled_match"
-  | "void_did_not_play";
-
-type EliminationReason =
-  | "no_pick"
-  | "no_shot_on_target"
-  | "player_did_not_play";
 
 interface PickRow {
   id: number;
   user_id: string;
   player_id: number;
   match_id: number;
-}
-
-interface EvaluatedPick {
-  pickId: number;
-  userId: string;
-  result: PickResult;
-  shotsOnTarget: number;
-  goals: number;
-  eliminationReason: EliminationReason | null;
-  // Populated after evaluation — used for the elimination email
-  playerId?: number;
 }
 
 // Collects data needed to send elimination emails after a day is processed
@@ -172,19 +155,17 @@ async function getProcessableMatchDays(): Promise<
 // ─── Step 3: Determine result for a single pick ───────────────────────────────
 
 /**
- * Looks up player_match_stats and applies the survival rules from game-rules.md §4.
+ * Fetches player stats from DB and delegates to the pure evaluation function
+ * in lib/game/evaluate-pick.ts (game-rules.md §4).
  */
 async function evaluatePick(pick: PickRow, matchStatus: string): Promise<EvaluatedPick> {
-  // Cancelled match: user survives automatically, no goals accumulated (§7.2)
+  // For cancelled matches, no need to fetch stats
   if (matchStatus === "cancelled") {
-    return {
-      pickId: pick.id,
-      userId: pick.user_id,
-      result: "void_cancelled_match",
-      shotsOnTarget: 0,
-      goals: 0,
-      eliminationReason: null,
-    };
+    return evaluatePickResult(
+      { pickId: pick.id, userId: pick.user_id },
+      matchStatus,
+      null
+    );
   }
 
   // Look up this player's stats in this match
@@ -201,41 +182,11 @@ async function evaluatePick(pick: PickRow, matchStatus: string): Promise<Evaluat
     );
   }
 
-  // No stats row or zero minutes: player didn't participate (E3, §4.2, §7.5)
-  if (!stats || stats.minutes_played === 0) {
-    return {
-      pickId: pick.id,
-      userId: pick.user_id,
-      result: "void_did_not_play",
-      shotsOnTarget: 0,
-      goals: 0,
-      eliminationReason: "player_did_not_play",
-    };
-  }
-
-  // Player played. Did they have a shot on target? (§4.1)
-  if (stats.shots_on_target >= 1) {
-    return {
-      pickId: pick.id,
-      userId: pick.user_id,
-      result: "survived",
-      shotsOnTarget: stats.shots_on_target,
-      // Only real goals count for the tiebreaker (§5.1).
-      // own_goals are excluded — they're stored separately and not counted (§5.2, §7.4).
-      goals: stats.goals,
-      eliminationReason: null,
-    };
-  }
-
-  // Played but no shots on target → eliminated (E2, §4.2)
-  return {
-    pickId: pick.id,
-    userId: pick.user_id,
-    result: "eliminated",
-    shotsOnTarget: 0,
-    goals: 0,
-    eliminationReason: "no_shot_on_target",
-  };
+  return evaluatePickResult(
+    { pickId: pick.id, userId: pick.user_id },
+    matchStatus,
+    stats
+  );
 }
 
 // ─── Step 4: Apply result to DB ───────────────────────────────────────────────

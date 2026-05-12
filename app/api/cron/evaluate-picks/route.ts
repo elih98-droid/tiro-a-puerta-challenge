@@ -1,19 +1,23 @@
 /**
  * app/api/cron/evaluate-picks/route.ts
  *
- * Cron job that evaluates pick results once a match day is complete.
- * Configured in vercel.json to run every minute (idempotent — skips
- * picks already evaluated and days already processed).
+ * Cron job that evaluates pick results. Runs every minute (idempotent).
  *
- * What it does each run:
- * 1. Locks picks whose effective_deadline has passed (is_locked → TRUE).
- * 2. Finds match_days where ALL matches are 'finished' or 'cancelled'.
- * 3. For each such day: evaluates every locked pick with result = NULL.
- *    - Determines result: survived / eliminated / void_cancelled_match / void_did_not_play.
- *    - Updates user_picks (result, shots_on_target_count, goals_scored, processed_at).
- *    - Updates user_status (is_alive, days_survived, total_goals_accumulated, etc.).
- * 4. Eliminates alive users who had no pick that day (E1 — 'no_pick').
- * 5. Marks match_days.is_processed = TRUE.
+ * Two-phase evaluation:
+ *
+ * Phase A — Per-match (immediate feedback):
+ *   As soon as an individual match finishes, evaluates all picks that
+ *   reference that match. Users get their result without waiting for
+ *   every other match of the day to finish. Critical for Mundial days
+ *   where matches span 1pm–10pm CDMX (up to 6 matches per day).
+ *
+ * Phase B — Per-day (end-of-day cleanup):
+ *   Once ALL matches of a day are finished/cancelled:
+ *   - Eliminates alive users who had no pick (E1 — 'no_pick').
+ *   - Marks match_days.is_processed = TRUE.
+ *
+ * Additionally, on every run:
+ *   - Locks picks whose effective_deadline has passed (is_locked → TRUE).
  *
  * Survival rules applied (game-rules.md §4):
  *   survived          → player played (minutes > 0) AND shots_on_target >= 1
@@ -27,8 +31,8 @@
  *
  * Note on the 24h rule (game-rules.md §6.5):
  *   Rules say results are "final" 24h after the match ends. For the MVP we
- *   evaluate as soon as all matches for the day are finished. A future
- *   iteration can enforce the 24h window before setting is_processed = TRUE.
+ *   evaluate as soon as the match finishes. A future iteration can enforce
+ *   the 24h window before setting is_processed = TRUE.
  *
  * Auth: same pattern as sync-live-matches — CRON_SECRET header in production,
  * skipped in local dev.
@@ -443,25 +447,27 @@ async function sendEliminationEmails(
   }
 }
 
-// ─── Core: process a single match_day ────────────────────────────────────────
+// ─── Phase A: Evaluate picks per finished match (immediate feedback) ────────
 
-async function processMatchDay(day: {
-  id: number;
-  match_date: string;
-}): Promise<{ evaluated: number; noPickEliminated: number; errors: string[] }> {
+/**
+ * Finds all locked picks with no result whose match has already finished
+ * (or been cancelled) and evaluates them immediately — without waiting for
+ * the entire match day to complete.
+ *
+ * This is the key improvement for the Mundial: on a day with matches at
+ * 1pm, 4pm, and 7pm, the 1pm user gets their result as soon as that match
+ * ends instead of waiting until after 9pm.
+ */
+async function evaluatePicksForFinishedMatches(): Promise<{
+  evaluated: number;
+  pendingEmails: PendingEliminationEmail[];
+  errors: string[];
+}> {
   const errors: string[] = [];
+  let evaluated = 0;
+  const pendingEmails: PendingEliminationEmail[] = [];
 
-  // Get match statuses for this day (needed to handle cancelled matches)
-  const { data: matches, error: matchesError } = await supabase
-    .from("matches")
-    .select("id, status")
-    .eq("match_day_id", day.id);
-
-  if (matchesError) throw new Error(`Failed to fetch matches for day ${day.id}: ${matchesError.message}`);
-
-  const matchStatusById = new Map((matches ?? []).map((m) => [m.id, m.status]));
-
-  // Get alive user IDs first — we only evaluate picks for users still in the game.
+  // Only evaluate picks for users still alive in the game.
   // Eliminated users' pre-picks are skipped entirely — no result is written,
   // avoiding misleading 'survived' entries on /my-picks for already-out players.
   const { data: aliveStatuses, error: aliveError } = await supabase
@@ -469,42 +475,71 @@ async function processMatchDay(day: {
     .select("user_id")
     .eq("is_alive", true);
 
-  if (aliveError) throw new Error(`Failed to fetch alive users for day ${day.id}: ${aliveError.message}`);
-
+  if (aliveError) throw new Error(`Failed to fetch alive users: ${aliveError.message}`);
   const aliveUserIds = (aliveStatuses ?? []).map((s) => s.user_id);
+  if (aliveUserIds.length === 0) return { evaluated: 0, pendingEmails: [], errors: [] };
 
-  // Get all locked picks that haven't been evaluated yet, only for alive users.
-  const { data: picks, error: picksError } = await supabase
+  // Get all locked picks with no result yet, for alive users only
+  const { data: pendingPicks, error: picksError } = await supabase
     .from("user_picks")
-    .select("id, user_id, player_id, match_id")
-    .eq("match_day_id", day.id)
+    .select("id, user_id, player_id, match_id, match_day_id")
     .eq("is_locked", true)
-    .in("user_id", aliveUserIds.length > 0 ? aliveUserIds : ["00000000-0000-0000-0000-000000000000"])
-    .is("result", null);
+    .is("result", null)
+    .in("user_id", aliveUserIds);
 
-  if (picksError) throw new Error(`Failed to fetch picks for day ${day.id}: ${picksError.message}`);
+  if (picksError) throw new Error(`Failed to fetch pending picks: ${picksError.message}`);
+  if (!pendingPicks?.length) return { evaluated: 0, pendingEmails: [], errors: [] };
 
-  let evaluated = 0;
+  // Get statuses of the matches these picks reference
+  const matchIds = [...new Set(pendingPicks.map((p) => p.match_id))];
+  const { data: matches, error: matchesError } = await supabase
+    .from("matches")
+    .select("id, status")
+    .in("id", matchIds);
 
-  // Accumulate data for elimination emails (sent at end of day processing)
-  const pendingEmails: PendingEliminationEmail[] = [];
+  if (matchesError) throw new Error(`Failed to fetch match statuses: ${matchesError.message}`);
+
+  const matchStatusById = new Map(
+    (matches ?? []).map((m) => [m.id, m.status as string])
+  );
+
+  // Only evaluate picks whose match is already finished or cancelled
+  const evaluablePicks = pendingPicks.filter((p) => {
+    const status = matchStatusById.get(p.match_id);
+    return status === "finished" || status === "cancelled";
+  });
+
+  if (evaluablePicks.length === 0) return { evaluated: 0, pendingEmails: [], errors: [] };
+
+  // Get match_day dates (needed for elimination emails)
+  const dayIds = [...new Set(evaluablePicks.map((p) => p.match_day_id))];
+  const { data: days } = await supabase
+    .from("match_days")
+    .select("id, match_date")
+    .in("id", dayIds);
+  const dateByDayId = new Map((days ?? []).map((d) => [d.id, d.match_date]));
 
   // Evaluate each pick sequentially
-  for (const pick of picks ?? []) {
+  for (const pick of evaluablePicks) {
     const matchStatus = matchStatusById.get(pick.match_id) ?? "finished";
 
     try {
       const result = await evaluatePick(pick as PickRow, matchStatus);
-      await applyResult(result, day.id);
+      await applyResult(result, pick.match_day_id);
       evaluated++;
 
       console.log(
-        `Pick ${pick.id} (user ${pick.user_id}): ${result.result}` +
-        (result.shotsOnTarget > 0 ? ` | shots: ${result.shotsOnTarget}, goals: ${result.goals}` : "")
+        `[per-match] Pick ${pick.id} (user ${pick.user_id}): ${result.result}` +
+          (result.shotsOnTarget > 0
+            ? ` | shots: ${result.shotsOnTarget}, goals: ${result.goals}`
+            : "")
       );
 
       // Queue elimination email if the user was eliminated
-      if (result.result === "eliminated" || result.result === "void_did_not_play") {
+      if (
+        result.result === "eliminated" ||
+        result.result === "void_did_not_play"
+      ) {
         pendingEmails.push({
           userId: result.userId,
           reason: result.eliminationReason!,
@@ -513,22 +548,60 @@ async function processMatchDay(day: {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`Error evaluating pick ${pick.id}: ${message}`);
+      console.error(`[per-match] Error evaluating pick ${pick.id}: ${message}`);
       errors.push(message);
     }
   }
 
+  // Send elimination emails (fire-and-forget — never blocks the cron)
+  if (pendingEmails.length > 0) {
+    // Group emails by match_day for the date context in the email template
+    for (const dayId of dayIds) {
+      const matchDate = dateByDayId.get(dayId) ?? "unknown";
+      const dayEmails = pendingEmails.filter((e) => {
+        const pick = evaluablePicks.find((p) => p.user_id === e.userId);
+        return pick?.match_day_id === dayId;
+      });
+      if (dayEmails.length > 0) {
+        sendEliminationEmails(dayEmails, matchDate).catch((err) => {
+          console.error("[per-match] sendEliminationEmails threw:", err);
+        });
+      }
+    }
+  }
+
+  return { evaluated, pendingEmails, errors };
+}
+
+// ─── Phase B: Close completed match days (no-pick + is_processed) ───────────
+
+/**
+ * Runs AFTER Phase A. Once ALL matches of a day are finished/cancelled:
+ * 1. Eliminates alive users who didn't submit a pick (E1 — 'no_pick').
+ * 2. Marks match_days.is_processed = TRUE.
+ *
+ * Pick evaluation is NOT done here — Phase A already handled it per-match.
+ * This function only handles end-of-day cleanup that requires the full day
+ * to be complete (you can't penalize someone for "no pick" while matches
+ * they could pick for are still upcoming).
+ */
+async function closeMatchDay(day: {
+  id: number;
+  match_date: string;
+}): Promise<{ noPickEliminated: number; errors: string[] }> {
+  const errors: string[] = [];
+  const pendingEmails: PendingEliminationEmail[] = [];
+
   // Eliminate alive users who had no pick today (E1)
   let noPickEliminated = 0;
-  let noPickUserIds: string[] = [];
   try {
     const result = await eliminateNoPickWithIds(day.id);
     noPickEliminated = result.count;
-    noPickUserIds = result.userIds;
     if (noPickEliminated > 0) {
-      console.log(`Eliminated ${noPickEliminated} user(s) for missing pick on day ${day.id}.`);
-      // Queue elimination emails for no-pick users
-      for (const userId of noPickUserIds) {
+      console.log(
+        `Eliminated ${noPickEliminated} user(s) for missing pick on day ${day.id}.`
+      );
+      for (const userId of result.userIds) {
         pendingEmails.push({ userId, reason: "no_pick" });
       }
     }
@@ -538,11 +611,10 @@ async function processMatchDay(day: {
     errors.push(message);
   }
 
-  // Mark day as processed only if there were no errors AND no locked picks
+  // Mark day as processed only if there are no errors AND no locked picks
   // remain unevaluated. The second check guards against a race condition where
-  // evaluate-picks runs while a late-starting match is briefly finished in the
-  // DB but its picks haven't been locked yet — without this, is_processed would
-  // be set to TRUE and those picks would be skipped forever.
+  // Phase A hasn't caught up yet — without this, is_processed would be set to
+  // TRUE and those picks would be skipped forever.
   if (errors.length === 0) {
     const { data: remainingPicks, error: remainingError } = await supabase
       .from("user_picks")
@@ -553,11 +625,13 @@ async function processMatchDay(day: {
       .limit(1);
 
     if (remainingError) {
-      errors.push(`Failed to verify remaining picks for day ${day.id}: ${remainingError.message}`);
+      errors.push(
+        `Failed to verify remaining picks for day ${day.id}: ${remainingError.message}`
+      );
     } else if (remainingPicks && remainingPicks.length > 0) {
-      // Still unevaluated picks — don't mark as processed, retry next run.
+      // Phase A hasn't finished evaluating — don't close yet, retry next run.
       console.warn(
-        `Day ${day.id} has unevaluated locked picks remaining — not marking as processed. Will retry next run.`
+        `Day ${day.id} has unevaluated locked picks remaining — not marking as processed.`
       );
     } else {
       const { error: markError } = await supabase
@@ -566,25 +640,29 @@ async function processMatchDay(day: {
         .eq("id", day.id);
 
       if (markError) {
-        errors.push(`Failed to mark day ${day.id} as processed: ${markError.message}`);
+        errors.push(
+          `Failed to mark day ${day.id} as processed: ${markError.message}`
+        );
       } else {
-        console.log(`Match day ${day.id} (${day.match_date}) marked as processed.`);
+        console.log(
+          `Match day ${day.id} (${day.match_date}) marked as processed.`
+        );
       }
     }
   } else {
     console.warn(
-      `Day ${day.id} had ${errors.length} error(s) — not marking as processed. Will retry next run.`
+      `Day ${day.id} had ${errors.length} error(s) — not marking as processed.`
     );
   }
 
-  // Send elimination emails for this day (fire-and-forget — never blocks the cron)
+  // Send no-pick elimination emails (fire-and-forget)
   if (pendingEmails.length > 0) {
     sendEliminationEmails(pendingEmails, day.match_date).catch((err) => {
-      console.error("[processMatchDay] sendEliminationEmails threw unexpectedly:", err);
+      console.error("[closeMatchDay] sendEliminationEmails threw:", err);
     });
   }
 
-  return { evaluated, noPickEliminated, errors };
+  return { noPickEliminated, errors };
 }
 
 // ─── Route handler ────────────────────────────────────────────────────────────
@@ -601,33 +679,39 @@ export async function GET(request: NextRequest) {
     const locked = await lockExpiredPicks();
     if (locked > 0) console.log(`Locked ${locked} expired pick(s).`);
 
-    // 2. Find match_days ready to be evaluated
-    const processableDays = await getProcessableMatchDays();
-
-    if (!processableDays.length) {
-      return Response.json({
-        ok: true,
-        message: "No match days ready to evaluate.",
-        picks_locked: locked,
-        elapsed_ms: Date.now() - startedAt,
-      });
+    // 2. Phase A: evaluate picks for individually finished matches.
+    //    Users get their result as soon as their match ends — no waiting
+    //    for every other match of the day to finish.
+    const phaseA = await evaluatePicksForFinishedMatches();
+    if (phaseA.evaluated > 0) {
+      console.log(`[Phase A] Evaluated ${phaseA.evaluated} pick(s) for finished matches.`);
     }
 
-    // 3. Process each ready day
+    // 3. Phase B: close completed days (no-pick elimination + is_processed).
+    //    Only runs when ALL matches of a day are finished/cancelled.
+    const processableDays = await getProcessableMatchDays();
     const dayResults = [];
 
     for (const day of processableDays) {
-      console.log(`Processing match day ${day.id} (${day.match_date})...`);
-      const result = await processMatchDay(day);
-      dayResults.push({ match_day_id: day.id, match_date: day.match_date, ...result });
+      console.log(`[Phase B] Closing match day ${day.id} (${day.match_date})...`);
+      const result = await closeMatchDay(day);
+      dayResults.push({
+        match_day_id: day.id,
+        match_date: day.match_date,
+        ...result,
+      });
     }
 
-    const totalErrors = dayResults.flatMap((d) => d.errors);
+    const totalErrors = [
+      ...phaseA.errors,
+      ...dayResults.flatMap((d) => d.errors),
+    ];
 
     return Response.json({
       ok: totalErrors.length === 0,
       picks_locked: locked,
-      days_processed: dayResults,
+      picks_evaluated: phaseA.evaluated,
+      days_closed: dayResults.length > 0 ? dayResults : undefined,
       errors: totalErrors.length > 0 ? totalErrors : undefined,
       elapsed_ms: Date.now() - startedAt,
     });

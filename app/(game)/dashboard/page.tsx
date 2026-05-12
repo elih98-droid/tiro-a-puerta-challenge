@@ -145,6 +145,20 @@ export default async function DashboardPage() {
     }
   }
 
+  // ── Ranking position + alive percentage ──
+  // Fetch all user_status ordered by ranking criteria to find this user's position
+  const { data: allStatuses } = await supabase
+    .from('user_status')
+    .select('user_id, is_alive, total_goals_accumulated, total_shots_accumulated')
+    .order('is_alive',                  { ascending: false })
+    .order('total_goals_accumulated',   { ascending: false })
+    .order('total_shots_accumulated',   { ascending: false })
+
+  const totalUsers = allStatuses?.length ?? 0
+  const aliveCount = allStatuses?.filter(s => s.is_alive).length ?? 0
+  const alivePercent = totalUsers > 0 ? Math.round((aliveCount / totalUsers) * 100) : 100
+  const userRank = (allStatuses?.findIndex(s => s.user_id === user!.id) ?? -1) + 1
+
   const username  = profile?.username  ?? 'usuario'
   const daysSurv  = status?.days_survived         ?? 0
   const goals     = status?.total_goals_accumulated ?? 0
@@ -219,6 +233,8 @@ export default async function DashboardPage() {
         isAlive={isAlive}
         daysSurvived={daysSurv}
         eliminationReason={status?.elimination_reason ?? null}
+        rank={userRank}
+        alivePercent={alivePercent}
       />
 
       {/* ── Card del pick (o card de eliminado) ── */}
@@ -242,11 +258,13 @@ export default async function DashboardPage() {
 // ── SurvivalCard ──────────────────────────────────────────────
 
 function SurvivalCard({
-  isAlive, daysSurvived, eliminationReason,
+  isAlive, daysSurvived, eliminationReason, rank, alivePercent,
 }: {
   isAlive: boolean
   daysSurvived: number
   eliminationReason: string | null
+  rank: number
+  alivePercent: number
 }) {
   const accent = isAlive ? P.green : P.red
 
@@ -275,39 +293,65 @@ function SurvivalCard({
         pointerEvents: 'none',
       }} />
 
-      {/* Estado: VIVO / ELIMINADO */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 10, height: 10, borderRadius: '50%',
-          background: accent,
-          boxShadow: `0 0 0 3px ${accent}33, 0 0 16px ${accent}99`,
-          animation: isAlive ? 'tpPulse 1.6s ease-in-out infinite' : 'none',
-          flexShrink: 0,
-        }} />
-        <div style={{
-          fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
-          fontSize: 32, letterSpacing: 2.5, lineHeight: 1, color: accent,
-        }}>
-          {isAlive ? 'ESTÁS VIVO' : 'ELIMINADO'}
+      {/* Main content: status left, rank right */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        {/* Left side: status + day */}
+        <div>
+          {/* Estado: VIVO / ELIMINADO */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: accent,
+              boxShadow: `0 0 0 3px ${accent}33, 0 0 16px ${accent}99`,
+              animation: isAlive ? 'tpPulse 1.6s ease-in-out infinite' : 'none',
+              flexShrink: 0,
+            }} />
+            <div style={{
+              fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+              fontSize: 32, letterSpacing: 2.5, lineHeight: 1, color: accent,
+            }}>
+              {isAlive ? 'ESTÁS VIVO' : 'ELIMINADO'}
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: 10, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase',
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontWeight: 700, color: P.gold,
+            paddingLeft: 20,
+          }}>
+            DÍA {daysSurvived}
+          </div>
+
+          {!isAlive && eliminationReason && (
+            <div style={{
+              marginTop: 8, fontSize: 12, color: P.sub, lineHeight: 1.4,
+              fontFamily: 'var(--font-archivo), system-ui',
+            }}>
+              {formatEliminationReason(eliminationReason)}
+            </div>
+          )}
+        </div>
+
+        {/* Right side: rank + alive percentage */}
+        <div style={{ textAlign: 'right', flexShrink: 0, position: 'relative', zIndex: 1 }}>
+          <div style={{
+            fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+            fontSize: 36, lineHeight: 1, color: P.gold, letterSpacing: 1,
+            textShadow: `0 0 16px ${P.gold}44`,
+          }}>
+            #{rank}
+          </div>
+          <div style={{
+            marginTop: 4,
+            fontFamily: 'var(--font-jetbrains-mono), monospace',
+            fontSize: 9, letterSpacing: 1, fontWeight: 700,
+            color: P.subDim,
+          }}>
+            {alivePercent}% vivos
+          </div>
         </div>
       </div>
-
-      <div style={{
-        marginTop: 10, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase',
-        fontFamily: 'var(--font-jetbrains-mono), monospace',
-        fontWeight: 700, color: P.gold,
-      }}>
-        DÍA {daysSurvived}
-      </div>
-
-      {!isAlive && eliminationReason && (
-        <div style={{
-          marginTop: 8, fontSize: 12, color: P.sub, lineHeight: 1.4,
-          fontFamily: 'var(--font-archivo), system-ui',
-        }}>
-          {formatEliminationReason(eliminationReason)}
-        </div>
-      )}
     </div>
   )
 }

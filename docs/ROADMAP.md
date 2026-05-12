@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 11 de mayo de 2026 (unit tests, leaderboard top 50 + %, dashboard rank)
+**Última actualización:** 12 de mayo de 2026 (página /profile con username editable, preferencias y logout)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -216,10 +216,12 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Configurar dominio propio de envío en Resend — `tiroapuerta.mx` verificado. `EMAIL_FROM=no-reply@tiroapuerta.mx` en Vercel. DNS configurado via Cloudflare auto-configure.
 - [ ] Email de notificaciones críticas (cambios de reglas, suspensión del torneo, etc.).
 
-#### 10. Perfil de usuario
-- [ ] Página de perfil (`/profile`): cambiar username, gestionar marketing emails opt-in.
-- [ ] Ver historial completo de picks del propio usuario.
-- [ ] Opción de eliminar cuenta (soft-delete con anonimización, `database-schema.md §3.1`).
+#### 10. Perfil de usuario ✅ (parcial)
+- [x] Página de perfil (`/profile`): cambiar username (editable inline, validado), gestionar marketing emails opt-in (toggle optimista).
+- [x] 5to tab "Perfil" en nav inferior. `LogoutButton` movido de dashboard a profile.
+- [x] Card "Tu cuenta": username editable, email readonly, proveedor (Google/Email). Card "Preferencias": toggle marketing. Card "Zona de peligro": cerrar sesión.
+- [ ] Ver historial completo de picks del propio usuario. *(Ya existe en `/my-picks` — no duplicar.)*
+- [ ] Opción de eliminar cuenta (soft-delete con anonimización, `database-schema.md §3.1`). *(Botón placeholder "Próximamente".)*
 
 #### 11. Anti-trampa y seguridad
 - [ ] Rate limiting en endpoints sensibles (`game-rules.md §11.1`).
@@ -291,6 +293,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ✅ Completo — 6 emails con marca, dominio propio `tiroapuerta.mx` |
+| Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout; eliminar cuenta pendiente) |
 | Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |
 | Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos; health-check pendiente de remover) |
 | Vercel Pro + crons activos | ✅ Completo (1 mayo) |

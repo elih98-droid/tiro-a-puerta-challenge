@@ -35,6 +35,20 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Tiro a Puerta Challenge",
   description: "La quiniela del Mundial 2026. Un tiro. Un día. Sobrevive.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Tiro a Puerta",
+    statusBarStyle: "black-translucent",
+  },
+  themeColor: "#0B0D18",
 }
 
 export default function RootLayout({

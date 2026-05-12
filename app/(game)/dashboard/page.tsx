@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { LogoutButton } from '@/components/layout/logout-button'
 import { DashboardPickCard, type DashboardPickCardProps } from '@/components/game/dashboard-pick-card'
 
 /**
@@ -202,13 +201,10 @@ export default async function DashboardPage() {
           MEX · USA · CAN 2026
         </div>
 
-        {/* Saludo + logout */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 10, color: P.subDim, lineHeight: 1, marginBottom: 2 }}>Hola,</div>
-            <div style={{ fontSize: 14, color: P.ink, fontWeight: 700, lineHeight: 1 }}>{username}</div>
-          </div>
-          <LogoutButton />
+        {/* Saludo */}
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 10, color: P.subDim, lineHeight: 1, marginBottom: 2 }}>Hola,</div>
+          <div style={{ fontSize: 14, color: P.ink, fontWeight: 700, lineHeight: 1 }}>{username}</div>
         </div>
       </div>
 

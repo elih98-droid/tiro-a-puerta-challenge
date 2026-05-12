@@ -61,11 +61,24 @@ function RankingIcon({ color }: { color: string }) {
   )
 }
 
+function ProfileIcon({ color }: { color: string }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="8" r="4" stroke={color} strokeWidth="2" />
+      <path
+        d="M4 21v-1a6 6 0 0112 0v1"
+        stroke={color} strokeWidth="2" strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 const NAV_ITEMS = [
-  { href: '/dashboard',   label: 'Inicio',    Icon: HomeIcon    },
-  { href: '/pick',        label: 'Pick',      Icon: PickIcon    },
-  { href: '/my-picks',    label: 'Mis Picks', Icon: MyPicksIcon },
-  { href: '/leaderboard', label: 'Ranking',   Icon: RankingIcon },
+  { href: '/dashboard',   label: 'Inicio',    Icon: HomeIcon     },
+  { href: '/pick',        label: 'Pick',      Icon: PickIcon     },
+  { href: '/my-picks',    label: 'Mis Picks', Icon: MyPicksIcon  },
+  { href: '/leaderboard', label: 'Ranking',   Icon: RankingIcon  },
+  { href: '/profile',     label: 'Perfil',    Icon: ProfileIcon  },
 ] as const
 
 export function NavLinks() {

@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 11 de mayo de 2026 (evaluación per-match + fix fixture PL 17–19/22 mayo)
+**Última actualización:** 11 de mayo de 2026 (unit tests, leaderboard top 50 + %, dashboard rank)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -120,6 +120,7 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 #### 4. Dashboard del usuario (post-login) ✅
 - [x] Página principal del usuario autenticado: estado actual (vivo/eliminado), pick del día, días sobrevividos.
 - [x] Layout con nav (username) y botón de logout.
+- [x] Card de supervivencia muestra posición en el ranking (#N en dorado) y porcentaje de usuarios vivos.
 - [ ] Mostrar jugadores quemados del usuario. *(Se agrega cuando haya picks.)*
 
 #### 5. Sistema de picks ✅
@@ -137,9 +138,11 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 #### 6. Leaderboard ✅
 - [x] Página pública de leaderboard (`/leaderboard`) — accesible sin autenticación.
 - [x] Mostrar: usuarios vivos, goles acumulados, días sobrevividos. Fila del usuario actual resaltada.
-- [x] Ordenar: vivos primero → goles acumulados DESC → días sobrevividos DESC (§5.1).
+- [x] Ordenar: vivos primero → goles acumulados DESC → tiros totales DESC (§5.1 + §5.3).
 - [x] Usuarios sin sesión ven el leaderboard con link "Iniciar sesión" en lugar del nav autenticado.
 - [x] Fix: `/my-picks` agregado a `PROTECTED_ROUTES` en proxy (bug pre-existente).
+- [x] Pill única "X% vivos" — nunca mostrar número total de participantes (privacidad).
+- [x] Top 50 con `ensureCurrentUser`: si el usuario está fuera del top 50, su fila aparece al final con su puesto real.
 - [ ] *(Pendiente)* Mostrar "pick de hoy" de cada usuario en el leaderboard, solo después del deadline (`game-rules.md §10.1`). Requiere query extra por usuario — diferido.
 
 #### 6.5. Mis picks (`/my-picks`) ✅
@@ -229,11 +232,11 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 ### 🟢 PRIORIDAD MEDIA-BAJA — Calidad y operación
 
 #### 12. Tests críticos
-- [ ] Tests unitarios para `evaluate-pick` (lógica de supervivencia/eliminación).
-- [ ] Tests para validación de deadlines.
-- [ ] Tests para "no repetir jugador".
-- [ ] Tests para casos borde: partido suspendido, cancelado, jugador no convocado, autogol (`game-rules.md §7`).
-- [ ] Tests para lógica de desempate (goles acumulados, `game-rules.md §5`).
+- [x] Tests unitarios para `evaluate-pick` (lógica de supervivencia/eliminación) — 10 tests en `tests/game/evaluate-pick.test.ts`, función pura en `lib/game/evaluate-pick.ts`. Vitest instalado.
+- [ ] Tests para validación de deadlines. *(Validado en producción con PL — trigger `validate_pick_timing` lo aplica a nivel DB.)*
+- [ ] Tests para "no repetir jugador". *(Constraint `unique_player_per_user` lo aplica a nivel DB — validado en producción.)*
+- [ ] Tests para casos borde: partido suspendido, cancelado, jugador no convocado, autogol (`game-rules.md §7`). *(Cancelado y no convocado cubiertos en tests de evaluate-pick. Suspendido y autogol pendientes — requieren escenarios reales.)*
+- [ ] Tests para lógica de desempate (goles acumulados, `game-rules.md §5`). *(El desempate es puro ordering en la query SQL — validado visualmente en leaderboard con datos reales.)*
 
 #### 13. Monitoreo y operación
 - [x] Configurar Sentry para errores en producción — SDK instalado, DSN configurado en Vercel, alertas por email activadas.
@@ -288,7 +291,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ✅ Completo — 6 emails con marca, dominio propio `tiroapuerta.mx` |
-| Tests críticos | ⏳ Pendiente |
+| Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |
 | Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos; health-check pendiente de remover) |
 | Vercel Pro + crons activos | ✅ Completo (1 mayo) |
 

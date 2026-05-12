@@ -398,7 +398,7 @@ async function sendEliminationEmails(
       .select("user_id, days_survived, total_goals_accumulated")
       .in("user_id", userIds),
     playerIds.length
-      ? supabase.from("players").select("id, name").in("id", playerIds)
+      ? supabase.from("players").select("id, display_name").in("id", playerIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
@@ -431,7 +431,7 @@ async function sendEliminationEmails(
     const player = elimination.playerId ? playerById.get(elimination.playerId) : undefined;
     const { subject, html } = eliminationEmailTemplate({
       username: user.username,
-      playerName: player?.name,
+      playerName: player?.display_name,
       matchDate,
       reason: elimination.reason,
       daysSurvived: status?.days_survived ?? 0,

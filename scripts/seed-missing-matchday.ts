@@ -29,7 +29,7 @@ const CDMX_TIMEZONE = "America/Mexico_City";
 const PICK_DEADLINE_BUFFER_MINUTES = 5;
 
 // Dates to seed (YYYY-MM-DD in CDMX timezone). Add as many as needed.
-const DATES_TO_SEED = ["2026-05-15"];
+const DATES_TO_SEED = ["2026-05-13", "2026-05-22"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

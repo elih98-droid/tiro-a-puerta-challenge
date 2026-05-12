@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 11 de mayo de 2026 (script seed-missing-matchday + reset DB para pruebas con amigos)
+**Última actualización:** 11 de mayo de 2026 (evaluación per-match + fix fixture PL 17–19/22 mayo)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -165,8 +165,8 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **Evaluación post-partido**: `evaluate-picks` determina `survived / eliminated / void_*`, actualiza `user_picks.result` y `user_status`. Corre cada minuto, idempotente.
 - [x] Manejo de casos borde: partido cancelado (`void_cancelled_match`), jugador que no jugó (`void_did_not_play`), usuario sin pick (`no_pick`). (`game-rules.md §7`)
 - [x] **Fix trigger `validate_pick_timing`**: permite updates del sistema después del deadline (migración `20260422000000`).
-- [ ] *(Futuro)* Respetar ventana de 24h antes de marcar `is_processed = TRUE` (`game-rules.md §6.5`). Actualmente evalúa en cuanto todos los partidos del día están `finished`.
-- [ ] **⚠️ Pendiente Mundial — evaluación por partido:** actualmente `evaluate-picks` espera a que TODOS los partidos del día estén `finished` antes de evaluar a nadie. En días del Mundial con partidos de 1pm a 10pm, usuarios del primer partido esperan hasta 9h para saber su resultado. Fix: evaluar cada pick en cuanto su partido específico termine, en lugar de esperar al cierre del día completo. Requiere refactor de `getProcessableMatchDays` + `processMatchDay` para operar a nivel partido, no a nivel día.
+- [ ] *(Futuro)* Respetar ventana de 24h antes de marcar `is_processed = TRUE` (`game-rules.md §6.5`). Actualmente evalúa en cuanto el partido termina.
+- [x] **Evaluación por partido (11 mayo):** `evaluate-picks` refactorizado a dos fases. **Fase A (per-match):** evalúa picks en cuanto su partido individual termina — sin esperar al resto del día. Función `evaluatePicksForFinishedMatches()` busca picks `locked + result = NULL` cuyo partido ya esté `finished`/`cancelled` y los evalúa inmediatamente. **Fase B (per-day):** `closeMatchDay()` solo corre cuando TODOS los partidos del día terminaron — maneja eliminación por `no_pick` (E1) y marca `is_processed = TRUE`. La lógica core (`evaluatePick`, `applyResult`) no cambió — solo se reorganizó cuándo se dispara. Presupuesto de API validado: peor caso Mundial (6 partidos/día) = 2,880 de 7,500 req/día (38%).
 - [x] **Fix (5 mayo):** `evaluate-picks` evaluaba pre-picks de usuarios ya eliminados y escribía `result = 'survived'` — mostraba "SOBREVIVISTE" en /my-picks para días posteriores a la eliminación. Fix original: join `user_status!inner` + filtro `is_alive = true`. **⚠️ Ese join causó un bug nuevo (ver fix 9 mayo).**
 - [x] **Fix (9 mayo):** el join `user_status!inner(is_alive)` causaba `"Could not find a relationship between 'user_picks' and 'user_status' in the schema cache"` en producción — PostgREST no expone esa FK. El cron fallaba silenciosamente en cada corrida sin evaluar nada desde el 5 mayo. Fix: reemplazado por dos queries separadas: fetch de `aliveUserIds` desde `user_status`, luego `.in("user_id", aliveUserIds)` en `user_picks`. Diagnosticado invocando el cron manualmente con curl y leyendo el error en el JSON de respuesta.
 - [x] **Fix (5 mayo):** `void_did_not_play` mostraba "ANULADO" en /my-picks — ambiguo (parecía sin consecuencias). Ahora muestra "ELIMINADO" en rojo. "ANULADO" queda solo para `void_cancelled_match`.
@@ -177,7 +177,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **Backfill (2 mayo):** `total_shots_accumulated` en `user_status` no incluía históricos anteriores al 1 mayo. Corregido con UPDATE de backfill.
 - [x] **Fix (3 mayo):** `SYNC_WINDOW_HOURS` reducido de 24 a 2 — con el cron corriendo cada minuto, sincronizar partidos terminados durante 24h agotaba los 7,500 req/día del plan PRO antes del mediodía. 2h es suficiente para correcciones tardías de stats.
 - [x] **Fix (3 mayo):** `DashboardPickCard` congelado en "POR INICIAR" cuando el partido arrancaba sin que el usuario recargara. Doble fix: (1) SSR siempre trae el status del partido independientemente del deadline; (2) polling arranca en mount y continúa mientras `status !== 'finished'`.
-- [ ] **⚠️ Pendiente Mundial:** al cargar el fixture completo (~1 semana antes del 11 jun), hacer prueba end-to-end de un día completo para verificar que sync y evaluate-picks manejan días con partidos de 1pm a 10pm. Los horarios del Mundial varían mucho por grupos y fases.
+- [ ] **⚠️ Pendiente Mundial:** al cargar el fixture completo (~1 semana antes del 11 jun), hacer prueba end-to-end de un día completo para verificar que sync y evaluate-picks manejan días con partidos de 1pm a 10pm. Con la evaluación per-match (11 mayo) cada pick se evalúa al terminar su partido, pero conviene validar con datos reales del Mundial.
 
 ---
 

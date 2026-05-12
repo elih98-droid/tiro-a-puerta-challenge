@@ -54,8 +54,14 @@ export default async function LeaderboardPage() {
     return { ...row, rank: row.is_alive ? aliveRank : null }
   })
 
-  const aliveRows     = ranked.filter(r => r.is_alive)
-  const eliminatedRows = ranked.filter(r => !r.is_alive)
+  // Show top 50 users per section. If the current user is outside the top 50,
+  // append them at the end so they always see their own row.
+  const TOP_N = 50
+  const allAlive      = ranked.filter(r => r.is_alive)
+  const allEliminated = ranked.filter(r => !r.is_alive)
+
+  const aliveRows      = ensureCurrentUser(allAlive, user?.id)
+  const eliminatedRows = ensureCurrentUser(allEliminated, user?.id)
 
   return (
     <>
@@ -69,13 +75,12 @@ export default async function LeaderboardPage() {
           Ranking
         </div>
 
-        {/* Stats pills */}
+        {/* Stats pill — percentage of alive users */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Pill label={`${totalParticipants} participante${totalParticipants !== 1 ? 's' : ''}`} color="rgba(255,255,255,0.45)" />
-          <Pill label={`${aliveCount} vivo${aliveCount !== 1 ? 's' : ''}`} color="#3CAC3B" />
-          {eliminatedCount > 0 && (
-            <Pill label={`${eliminatedCount} eliminado${eliminatedCount !== 1 ? 's' : ''}`} color="#E61D25" />
-          )}
+          <Pill
+            label={`${totalParticipants > 0 ? Math.round((aliveCount / totalParticipants) * 100) : 0}% vivos`}
+            color="#3CAC3B"
+          />
         </div>
       </div>
 
@@ -350,6 +355,27 @@ function Pill({ label, color }: { label: string; color: string }) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Returns top 50 rows, but always includes the current user's row.
+ * If the user is outside top 50, they're appended at the end.
+ */
+function ensureCurrentUser<T extends { user_id: string }>(
+  rows: T[],
+  currentUserId: string | undefined
+): T[] {
+  const TOP_N = 50
+  const top = rows.slice(0, TOP_N)
+  if (!currentUserId) return top
+
+  const alreadyIncluded = top.some(r => r.user_id === currentUserId)
+  if (alreadyIncluded) return top
+
+  const userRow = rows.find(r => r.user_id === currentUserId)
+  if (userRow) top.push(userRow)
+
+  return top
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatEliminationReason(reason: string | null): string {

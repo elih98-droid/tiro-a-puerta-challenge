@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 12 de mayo de 2026 (página /profile con username editable, preferencias y logout)
+**Última actualización:** 12 de mayo de 2026 (profile, PWA, safe areas iOS, Rivales 🔥)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -152,6 +152,7 @@ Sección privada donde cada participante puede ver un resumen de todos sus picks
 - [x] Ordenar por día (más reciente primero).
 - [x] Mostrar picks futuros/planeados también (pre-picks con badge "Pendiente").
 - [x] Fix: navegación de días en `/pick` ahora funciona aunque hoy no tenga partidos (always-run prev/next query + PickDayNav en el empty state).
+- [x] **Pestaña "Rivales 🔥":** distribución de picks del día en barras horizontales con porcentajes. Revelación progresiva por partido (`effective_deadline <= now`). Navegación por día con flechas. Solo jugadores elegidos, nunca identidad de usuarios. Porcentajes sobre picks hechos. Top 3 destacados (dorado/azul/verde). Tabs "Mis Picks ⚡" y "Rivales 🔥" con soporte de URL params `?tab=rivals&date=YYYY-MM-DD`.
 
 #### 6.6. Tracker en vivo del pick ✅
 Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez que el deadline vence.
@@ -287,8 +288,9 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Evaluación automática de picks (cron) | ✅ Completo — loop end-to-end verificado (22 abr) |
 | Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
 | Mecánica de picks | ✅ Completo |
-| Mis picks (/my-picks) | ✅ Completo |
+| Mis picks (/my-picks) + Rivales 🔥 | ✅ Completo |
 | Tracker en vivo del pick | ✅ Completo |
+| PWA (manifest + íconos + safe areas) | ✅ Completo — instalable en Android y iOS |
 | Diseño visual (tareas 8–9) | ✅ Completo — todas las pantallas + responsividad desktop |
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |

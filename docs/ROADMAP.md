@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 13 de mayo de 2026 (Supabase Custom Domain, flyer, múltiples admins, reglas en perfil, modelo económico)
+**Última actualización:** 13 de mayo de 2026 (T&C + Aviso de Privacidad, checkbox obligatorio en signup)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -268,7 +268,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 
 - [x] **Proveedor de datos deportivos** — **API-Football** (api-football.com). Plan PRO, 3 meses. API key configurada en `.env.local`.
 - [x] **Modelo económico y premios** — Decidido: premio $150,000 MXN al ganador, premios para Top 5, entrada $1,000 MXN por participante.
-- [ ] **Estructura legal** — Persona física o moral, T&C, aviso de privacidad.
+- [x] **Estructura legal (T&C + Privacidad)** — Página `/terms` con 21 secciones: T&C completos + Aviso de Privacidad LFPDPPP. Organizadores: Elías Hale, Daniel Occelli, Víctor Bensimon. Checkbox obligatorio en signup y complete-profile. Columna `terms_accepted_at` en `public.users`. Pendiente: configurar emails `privacidad@tiroapuerta.mx` y `contacto@tiroapuerta.mx`.
 - [ ] **Ventana exacta del recordatorio de pick** (`game-rules.md §13.5`).
 - [x] **Criterios de desempate secundarios** — Resuelto: tiros totales acumulados (`total_shots_accumulated`) como segundo desempate. `game-rules.md §5.3` actualizado.
 - [x] **Branding y diseño visual** — Identidad Dirección 3 implementada en todas las pantallas. Paleta, tipografía, `TPMark` SVG, sistema de diseño completo.
@@ -296,6 +296,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ✅ Completo — 6 emails con marca, dominio propio `tiroapuerta.mx` |
+| Términos y Condiciones + Privacidad | ✅ Completo — `/terms` con 21 secciones, checkbox obligatorio, `terms_accepted_at` en DB |
 | Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout, reglas; eliminar cuenta pendiente) |
 | Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |
 | Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos) |

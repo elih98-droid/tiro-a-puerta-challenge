@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 13 de mayo de 2026 (Supabase Pro + Custom Domain `auth.tiroapuerta.mx`)
+**Última actualización:** 13 de mayo de 2026 (Supabase Custom Domain, flyer, múltiples admins, reglas en perfil, modelo económico)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -85,7 +85,7 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [x] **Actualizar proxy**: si el usuario está autenticado pero `is_approved = false`, redirige a `/pending-approval`.
 - [x] **Página `/admin/approvals`** (protegida): lista de usuarios pendientes con username, email y fecha de registro. Botones de aprobar y rechazar. Solo accesible si `users.is_admin = true`.
 - [x] **Server Actions `approveUser` / `rejectUser`**: validan que quien llama es admin. Aprobar setea `is_approved = true`; rechazar elimina el usuario de `auth.users` (cascada a `public.users`).
-- [ ] *(Opcional)* **Email al admin** cuando alguien se registra (vía Resend). *(Diferido a tarea 9.)*
+- [x] **Email al admin** cuando alguien se registra — `notifyAdminOfNewSignup` envía a múltiples emails (`ADMIN_EMAIL` separado por comas). 3 admins configurados.
 - [ ] *(Opcional)* **Email al usuario** cuando es aprobado o rechazado. *(Diferido a tarea 9.)*
 
 #### 3. Integración con API-Football y pruebas con Premier League ✅ (worker pendiente prueba en vivo)
@@ -221,6 +221,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Página de perfil (`/profile`): cambiar username (editable inline, validado), gestionar marketing emails opt-in (toggle optimista).
 - [x] 5to tab "Perfil" en nav inferior. `LogoutButton` movido de dashboard a profile.
 - [x] Card "Tu cuenta": username editable, email readonly, proveedor (Google/Email). Card "Preferencias": toggle marketing. Card "Zona de peligro": cerrar sesión.
+- [x] Card "Reglas del juego": colapsable, 8 reglas clave con iconos + "Autoridad de Tiro a Puerta" (API como fuente de verdad).
 - [ ] Ver historial completo de picks del propio usuario. *(Ya existe en `/my-picks` — no duplicar.)*
 - [ ] Opción de eliminar cuenta (soft-delete con anonimización, `database-schema.md §3.1`). *(Botón placeholder "Próximamente".)*
 
@@ -266,7 +267,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas afectadas:
 
 - [x] **Proveedor de datos deportivos** — **API-Football** (api-football.com). Plan PRO, 3 meses. API key configurada en `.env.local`.
-- [ ] **Modelo económico y premios** (puede afectar flujo de registro y T&C).
+- [x] **Modelo económico y premios** — Decidido: premio $150,000 MXN al ganador, premios para Top 5, entrada $1,000 MXN por participante.
 - [ ] **Estructura legal** — Persona física o moral, T&C, aviso de privacidad.
 - [ ] **Ventana exacta del recordatorio de pick** (`game-rules.md §13.5`).
 - [x] **Criterios de desempate secundarios** — Resuelto: tiros totales acumulados (`total_shots_accumulated`) como segundo desempate. `game-rules.md §5.3` actualizado.
@@ -295,7 +296,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ✅ Completo — 6 emails con marca, dominio propio `tiroapuerta.mx` |
-| Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout; eliminar cuenta pendiente) |
+| Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout, reglas; eliminar cuenta pendiente) |
 | Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |
 | Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos) |
 | Supabase Pro + Custom Domain | ✅ Completo — `auth.tiroapuerta.mx` (13 mayo) |

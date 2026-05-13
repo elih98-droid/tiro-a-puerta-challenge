@@ -10,8 +10,12 @@ import { newSignupEmailTemplate } from '@/lib/email/templates/new-signup'
 // ─── Email helper ──────────────────────────────────────────────────────────────
 
 async function notifyAdminOfNewSignup(username: string, email: string): Promise<void> {
-  const adminEmail = process.env.ADMIN_EMAIL
-  if (!adminEmail) return // Skip silently if not configured
+  const adminEmailRaw = process.env.ADMIN_EMAIL
+  if (!adminEmailRaw) return // Skip silently if not configured
+
+  // Support comma-separated list of admin emails (e.g. "a@x.com,b@x.com,c@x.com")
+  const adminEmails = adminEmailRaw.split(',').map((e) => e.trim()).filter(Boolean)
+  if (adminEmails.length === 0) return
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tiroapuerta.mx'
   const { subject, html } = newSignupEmailTemplate({
@@ -21,10 +25,14 @@ async function notifyAdminOfNewSignup(username: string, email: string): Promise<
     approvalsUrl: `${appUrl}/admin/approvals`,
   })
 
-  const result = await sendEmail({ to: adminEmail, subject, html })
-  if (!result.ok) {
-    // Non-critical — log and continue
-    console.error('[notifyAdminOfNewSignup] Failed:', result.error)
+  // Send to all admins in parallel
+  const results = await Promise.all(
+    adminEmails.map((to) => sendEmail({ to, subject, html }))
+  )
+  for (const result of results) {
+    if (!result.ok) {
+      console.error('[notifyAdminOfNewSignup] Failed:', result.error)
+    }
   }
 }
 

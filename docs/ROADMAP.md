@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 12 de mayo de 2026 (profile, PWA, safe areas iOS, Rivales 🔥)
+**Última actualización:** 13 de mayo de 2026 (Supabase Pro + Custom Domain `auth.tiroapuerta.mx`)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -254,7 +254,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **App en producción** — `tiroapuerta.mx` funcionando con dominio propio.
 - [x] **Fix Site URL de Supabase** — corregido a `https://tiroapuerta.mx`. Redirect URLs con wildcard configuradas para prod y localhost.
 - [x] **Dominio personalizado** — `tiroapuerta.mx` comprado y configurado. Vercel apunta al dominio. `www` hace redirect 301 a raíz. `NEXT_PUBLIC_APP_URL` y Supabase Site URL actualizados. App live en `https://tiroapuerta.mx`.
-- [ ] **Custom Domain en Supabase** (plan Pro de Supabase) — para que el popup de Google OAuth muestre "Tiro a Puerta Challenge" en lugar del subdominio de Supabase. Requiere dominio propio ✓ (ya tenemos `tiroapuerta.mx`), falta upgrade a Supabase Pro.
+- [x] **Custom Domain en Supabase** — `auth.tiroapuerta.mx` configurado (Supabase Pro + CNAME en Cloudflare + TXT de verificación). Google OAuth redirect URI actualizada. Popup de Google ahora muestra dominio propio.
 - [x] **Upgrade a Vercel Pro** — plan activo desde 1 de mayo. Cron Jobs reactivados en `vercel.json` (`* * * * *`).
 - [ ] Configurar backups de Supabase más frecuentes durante el torneo (`database-schema.md §9.3`).
 - [x] **Desactivar branch protection en GitHub** — hecho el 4 de mayo. Push directo a `main`.
@@ -297,7 +297,8 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Emails transaccionales | ✅ Completo — 6 emails con marca, dominio propio `tiroapuerta.mx` |
 | Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout; eliminar cuenta pendiente) |
 | Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |
-| Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos; health-check pendiente de remover) |
+| Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos) |
+| Supabase Pro + Custom Domain | ✅ Completo — `auth.tiroapuerta.mx` (13 mayo) |
 | Vercel Pro + crons activos | ✅ Completo (1 mayo) |
 
 ---

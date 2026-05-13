@@ -186,6 +186,9 @@ export function ProfileClient({ data }: { data: ProfileData }) {
       {/* ── Card: Preferencias ── */}
       <PreferencesCard marketingOptIn={data.marketingOptIn} />
 
+      {/* ── Card: Reglas del juego ── */}
+      <RulesCard />
+
       {/* ── Card: Zona de peligro ── */}
       <DangerCard />
     </div>
@@ -482,6 +485,156 @@ function PreferencesCard({ marketingOptIn }: { marketingOptIn: boolean }) {
           }} />
         </button>
       </div>
+    </Card>
+  )
+}
+
+// ── Rules Card ──
+function RulesCard() {
+  const [open, setOpen] = useState(false)
+
+  const rules = [
+    {
+      icon: '⚽',
+      title: 'Elige un jugador por día',
+      desc: 'Cada día con partidos, escoge UN jugador de cualquier partido. Puedes cambiar tu pick hasta 5 min antes del kickoff de su partido.',
+    },
+    {
+      icon: '✅',
+      title: 'Tira a puerta = Sobrevives',
+      desc: 'Si tu jugador registra al menos un tiro a puerta (gol, tiro atajado, o tiro al marco), sobrevives y avanzas al siguiente día.',
+    },
+    {
+      icon: '💀',
+      title: 'No tira = Eliminado',
+      desc: 'Si tu jugador no registra ningún tiro a puerta, quedas eliminado definitivamente. También si no haces pick a tiempo.',
+    },
+    {
+      icon: '🚫',
+      title: 'Sin repetir jugadores',
+      desc: 'Cada jugador solo se puede usar UNA vez en todo el torneo. Una vez elegido, queda "quemado" para siempre.',
+    },
+    {
+      icon: '🏆',
+      title: 'Gana el último en pie',
+      desc: 'Si hay varios sobrevivientes al final, gana quien acumuló más goles con sus jugadores elegidos. Segundo desempate: tiros totales.',
+    },
+    {
+      icon: '📅',
+      title: 'Picks por adelantado',
+      desc: 'Puedes planear tus picks hasta 3 días por adelantado. Un pick anticipado bloquea a ese jugador en los demás días.',
+    },
+    {
+      icon: '⏱️',
+      title: 'Deadline: 5 min antes del kickoff',
+      desc: 'El límite para hacer o cambiar tu pick es 5 minutos antes de que inicie el partido de tu jugador elegido.',
+    },
+    {
+      icon: '❌',
+      title: 'Partido cancelado o jugador no convocado',
+      desc: 'Si el partido se cancela, tu pick se anula sin consecuencias. Si tu jugador no es convocado o no juega, quedas eliminado.',
+    },
+  ]
+
+  return (
+    <Card>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: 0,
+        }}
+      >
+        <div>
+          <SectionLabel>Reglas del juego</SectionLabel>
+          {!open && (
+            <div style={{
+              fontFamily: 'var(--font-archivo), system-ui',
+              fontSize: 11,
+              color: P.subDim,
+              marginTop: -8,
+            }}>
+              Toca para ver el reglamento
+            </div>
+          )}
+        </div>
+        <span style={{
+          fontFamily: 'var(--font-archivo), system-ui',
+          fontSize: 18,
+          color: P.subDim,
+          transition: 'transform 0.2s',
+          transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+        }}>
+          ▾
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
+          {/* Autoridad */}
+          <div style={{
+            padding: '14px 16px',
+            background: `${P.blue}18`,
+            border: `1px solid ${P.blue}33`,
+            borderRadius: 10,
+          }}>
+            <div style={{
+              fontFamily: 'var(--font-archivo), system-ui',
+              fontSize: 13,
+              fontWeight: 700,
+              color: P.gold,
+              marginBottom: 6,
+            }}>
+              Autoridad de Tiro a Puerta
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-archivo), system-ui',
+              fontSize: 12,
+              color: P.sub,
+              lineHeight: 1.5,
+            }}>
+              Todos los datos del juego (tiros a puerta, goles, minutos jugados) provienen de una API oficial de datos deportivos. Sus registros son la fuente de verdad absoluta e inapelable para determinar resultados, supervivencia y eliminación. Ninguna reclamación externa o estadística alternativa será considerada.
+            </div>
+          </div>
+
+          {rules.map((rule, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              gap: 12,
+              alignItems: 'flex-start',
+            }}>
+              <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.4 }}>
+                {rule.icon}
+              </span>
+              <div>
+                <div style={{
+                  fontFamily: 'var(--font-archivo), system-ui',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: P.ink,
+                  marginBottom: 3,
+                }}>
+                  {rule.title}
+                </div>
+                <div style={{
+                  fontFamily: 'var(--font-archivo), system-ui',
+                  fontSize: 12,
+                  color: P.sub,
+                  lineHeight: 1.45,
+                }}>
+                  {rule.desc}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   )
 }

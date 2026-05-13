@@ -90,6 +90,7 @@ export async function signUp(
   const password = formData.get('password') as string
   const username = (formData.get('username') as string)?.trim()
   const over18 = formData.get('over_18_confirmed') === 'on'
+  const termsAccepted = formData.get('terms_accepted') === 'on'
   const marketingOptIn = formData.get('marketing_emails_opt_in') === 'on'
 
   const emailError = validateEmail(email)
@@ -102,6 +103,7 @@ export async function signUp(
   if (usernameError) return { error: usernameError }
 
   if (!over18) return { error: 'Debes confirmar que eres mayor de 18 años.' }
+  if (!termsAccepted) return { error: 'Debes aceptar los Términos y Condiciones.' }
 
   const supabase = await createClient()
 
@@ -115,6 +117,7 @@ export async function signUp(
         username,
         over_18_confirmed: true,
         marketing_emails_opt_in: marketingOptIn,
+        terms_accepted_at: new Date().toISOString(),
       },
     },
   })
@@ -219,12 +222,14 @@ export async function completeProfile(
 ): Promise<AuthActionState> {
   const username = (formData.get('username') as string)?.trim()
   const over18 = formData.get('over_18_confirmed') === 'on'
+  const termsAccepted = formData.get('terms_accepted') === 'on'
   const marketingOptIn = formData.get('marketing_emails_opt_in') === 'on'
 
   const usernameError = validateUsername(username)
   if (usernameError) return { error: usernameError }
 
   if (!over18) return { error: 'Debes confirmar que eres mayor de 18 años.' }
+  if (!termsAccepted) return { error: 'Debes aceptar los Términos y Condiciones.' }
 
   const supabase = await createClient()
 
@@ -248,6 +253,7 @@ export async function completeProfile(
     email_verified: !!user.email_confirmed_at,
     over_18_confirmed: true,
     marketing_emails_opt_in: marketingOptIn,
+    terms_accepted_at: new Date().toISOString(),
     auth_provider: provider,
   })
 

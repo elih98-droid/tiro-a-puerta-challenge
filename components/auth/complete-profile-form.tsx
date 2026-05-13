@@ -147,13 +147,15 @@ function Field({
 // ── DarkCheckbox ───────────────────────────────────────────────
 
 function DarkCheckbox({
-  id, name, label, hint, required = false,
+  id, name, label, hint, required = false, linkHref, linkLabel,
 }: {
   id: string
   name: string
   label: string
   hint?: string
   required?: boolean
+  linkHref?: string
+  linkLabel?: string
 }) {
   const [checked, setChecked] = useState(false)
 
@@ -193,6 +195,21 @@ function DarkCheckbox({
           }}>
             {hint}
           </div>
+        )}
+        {linkHref && linkLabel && (
+          <a
+            href={linkHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: 'inline-block', marginTop: 3,
+              fontSize: 11, color: P.gold, textDecoration: 'underline',
+              fontFamily: 'var(--font-archivo), system-ui',
+            }}
+          >
+            {linkLabel}
+          </a>
         )}
       </div>
     </label>
@@ -312,6 +329,12 @@ export function CompleteProfileForm() {
             <DarkCheckbox
               id="over_18_confirmed" name="over_18_confirmed" required
               label="Confirmo que soy mayor de 18 años"
+            />
+            <DarkCheckbox
+              id="terms_accepted" name="terms_accepted" required
+              label="Acepto los Términos y Condiciones"
+              linkHref="/terms"
+              linkLabel="Leer Términos y Condiciones"
             />
             <DarkCheckbox
               id="marketing_emails_opt_in" name="marketing_emails_opt_in"

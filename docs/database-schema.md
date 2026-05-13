@@ -131,6 +131,7 @@ Usuarios registrados en la plataforma. Vinculada a `auth.users` de Supabase (que
 | `over_18_confirmed` | `BOOLEAN` NOT NULL | Checkbox de edad marcado al registrarse. |
 | `marketing_emails_opt_in` | `BOOLEAN` DEFAULT FALSE | Si recibe emails de marketing. Los transaccionales siempre van. |
 | `auth_provider` | `TEXT` NOT NULL | `'email'`, `'google'`, `'apple'`. |
+| `terms_accepted_at` | `TIMESTAMPTZ` | Timestamp de aceptación de T&C. Se establece al crear la cuenta. |
 | `is_deleted` | `BOOLEAN` DEFAULT FALSE | Soft-delete por petición ARCO. Si TRUE, email y username están anonimizados. |
 | `created_at` | `TIMESTAMPTZ` DEFAULT NOW() | |
 | `updated_at` | `TIMESTAMPTZ` DEFAULT NOW() | |

@@ -121,7 +121,7 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [x] Página principal del usuario autenticado: estado actual (vivo/eliminado), pick del día, días sobrevividos.
 - [x] Layout con nav (username) y botón de logout.
 - [x] Card de supervivencia muestra posición en el ranking (#N en dorado) y porcentaje de usuarios vivos.
-- [ ] Mostrar jugadores quemados del usuario. *(Se agrega cuando haya picks.)*
+- [x] ~~Mostrar jugadores quemados del usuario.~~ *(Descartado — ya visible en `/my-picks` con pill de "X jugadores quemados" y en `/pick` con 🚫. No duplicar.)*
 
 #### 5. Sistema de picks ✅
 - [x] **Pool de jugadores elegibles**: página `/pick` muestra todos los jugadores del día agrupados por partido.
@@ -245,7 +245,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Configurar Sentry para errores en producción — SDK instalado, DSN configurado en Vercel, alertas por email activadas.
 - [x] Configurar Vercel Analytics — habilitado en Vercel Pro, `<Analytics />` en `app/layout.tsx`.
 - [ ] Alertas de DB: queries lentas, conexiones al límite, fallos de sync con API (`database-schema.md §9.4`).
-- [ ] Remover página `/health-check` antes de producción.
+- [x] Remover página `/health-check` — eliminada el 12 mayo.
 - [x] **Performance UX (5 mayo):** `loading.tsx` en las 4 rutas del juego — componente compartido `PageLoading` con spinner dorado + shimmer cards. Navegación entre pestañas da feedback inmediato. `PickDayNav` convertido a Client Component con `useTransition`: spinner + dim al navegar entre días.
 
 #### 14. Despliegue y configuración de producción

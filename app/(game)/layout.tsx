@@ -32,6 +32,7 @@ export default function GameLayout({
 
       {/* ── Barra de marca superior — fondo full-width, contenido centrado ─ */}
       <div style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
         borderBottom: '1px solid rgba(255,255,255,0.07)',
         background: 'linear-gradient(180deg, rgba(42,57,141,0.18) 0%, transparent 100%)',
       }}>

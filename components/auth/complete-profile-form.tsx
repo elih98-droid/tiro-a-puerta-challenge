@@ -160,9 +160,9 @@ function DarkCheckbox({
   const [checked, setChecked] = useState(false)
 
   return (
-    <label htmlFor={id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}>
+    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}>
       <input
-        id={id} name={name} type="checkbox" required={required}
+        name={name} type="checkbox" required={required}
         checked={checked} onChange={(e) => setChecked(e.target.checked)}
         style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
       />

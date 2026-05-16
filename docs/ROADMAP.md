@@ -134,6 +134,7 @@ El juego es cerrado: cualquiera puede registrarse pero necesita aprobación expl
 - [x] **Picks por adelantado**: navegación por día (`?date=YYYY-MM-DD`), hasta 3 días hacia adelante y hacia atrás. Pre-picks bloquean al jugador en todos los demás días inmediatamente.
 - [x] **RLS fixes**: migración `20260422000001` (SECURITY DEFINER en `log_pick_history`), migración `20260422000002` (política FOR DELETE explícita en `user_picks`).
 - [x] **Fix is_alive**: `evaluate-picks` no infla `days_survived`/`total_goals_accumulated` de usuarios eliminados con pre-picks futuros (`.eq("is_alive", true)`).
+- [x] **Fix validación server-side (16 mayo):** `submitPick` ya no acepta `matchId`/`effectiveDeadline` del cliente. Solo recibe `playerId` + `matchDayId`; el servidor busca el jugador (activo), encuentra el partido (equipo juega ese día, exactamente 1 match), y usa `pick_deadline` real de DB. Elimina posibilidad de forjar combinaciones inválidas.
 
 #### 6. Leaderboard ✅
 - [x] Página pública de leaderboard (`/leaderboard`) — accesible sin autenticación.
@@ -184,6 +185,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **Fix (3 mayo):** `DashboardPickCard` congelado en "POR INICIAR" cuando el partido arrancaba sin que el usuario recargara. Doble fix: (1) SSR siempre trae el status del partido independientemente del deadline; (2) polling arranca en mount y continúa mientras `status !== 'finished'`.
 - [x] **Fix (15 mayo):** usuarios no aprobados eran visibles en el juego. `user_status` se crea al signup antes de la aprobación — el leaderboard los mostraba y `evaluate-picks` los eliminaba por `no_pick`. Fix: leaderboard filtra `users!inner` + `is_approved = true`; Phase A y Phase B de `evaluate-picks` filtran `aliveUserIds` contra usuarios aprobados.
 - [x] **Fix (15 mayo):** porcentajes de Rivales sumaban >100%. `Math.round` individual en cada porcentaje → largest remainder method (siempre suma 100).
+- [x] **Fix (16 mayo):** pre-picks de usuarios eliminados bloqueaban `closeMatchDay`. La query de `remainingPicks` no filtraba por usuarios vivos/aprobados — picks huérfanos impedían `is_processed = TRUE` indefinidamente. Fix: helper `getAliveApprovedUserIds()` extraído, re-llamado después de Phase A para reflejar eliminaciones recientes, pasado a `closeMatchDay` para filtrar solo picks relevantes.
 - [ ] **⚠️ Pendiente Mundial:** al cargar el fixture completo (~1 semana antes del 11 jun), hacer prueba end-to-end de un día completo para verificar que sync y evaluate-picks manejan días con partidos de 1pm a 10pm. Con la evaluación per-match (11 mayo) cada pick se evalúa al terminar su partido, pero conviene validar con datos reales del Mundial.
 
 ---

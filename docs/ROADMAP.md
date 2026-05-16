@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 13 de mayo de 2026 (fix: doble-toggle en DarkCheckbox bloqueaba signup y complete-profile)
+**Última actualización:** 15 de mayo de 2026 (anti-cheat: rate limiting, device fingerprinting, alertas automáticas)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -229,11 +229,11 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [ ] Ver historial completo de picks del propio usuario. *(Ya existe en `/my-picks` — no duplicar.)*
 - [ ] Opción de eliminar cuenta (soft-delete con anonimización, `database-schema.md §3.1`). *(Botón placeholder "Próximamente".)*
 
-#### 11. Anti-trampa y seguridad
-- [ ] Rate limiting en endpoints sensibles (`game-rules.md §11.1`).
-- [ ] CAPTCHA en registro y login (después de 3 intentos fallidos).
-- [ ] Device fingerprinting pasivo (hash user-agent + IP) en `pick_history`.
-- [ ] Alertas automáticas ante patrones anómalos.
+#### 11. Anti-trampa y seguridad ✅
+- [x] **Rate limiting** en endpoints sensibles — `lib/rate-limit.ts`, in-memory sliding window por IP. signIn (5/15min), signUp (3/60min), resetPassword (3/60min), submitPick (20/5min), removePick (20/5min). Sin librería externa (fail-open en cold start, aceptable).
+- [x] ~~CAPTCHA en registro y login.~~ *(Descartado — el sistema de aprobación manual ya filtra bots. CAPTCHA no aporta valor adicional.)*
+- [x] **Device fingerprinting** — IP + UA hash (SHA-256 truncado, 16 hex chars) capturados en `pick_history` (columnas existentes, ahora pobladas desde Server Actions vía admin client). Login guarda `last_login_ip` y `last_login_ua_hash` en `user_metadata` de Supabase Auth.
+- [x] **Alertas automáticas** — `lib/admin/alerts.ts` detecta: (1) misma IP con ≥2 cuentas distintas en el mismo día, (2) ≥5 cambios de pick en 10 min. Email con template Dirección 3 a los 3 admins. Dedup en memoria (24h TTL). Se dispara desde `submitPick` y `signIn`.
 
 ---
 
@@ -301,6 +301,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ✅ Completo — 7 emails con marca, dominio propio `tiroapuerta.mx` |
 | Términos y Condiciones + Privacidad | ✅ Completo — `/terms` con 21 secciones, checkbox obligatorio, `terms_accepted_at` en DB |
+| Anti-trampa y seguridad | ✅ Completo — rate limiting, fingerprinting, alertas automáticas |
 | Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout, reglas; eliminar cuenta pendiente) |
 | Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |
 | Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos) |

@@ -162,6 +162,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Polling automático cada 60 segundos (sincronizado con el worker `sync-live-matches`).
 - [x] Fix dashboard: query de match day cambiada de "dentro de la ventana de picks" a "por fecha del día", para que el tracker siga visible durante y después del partido.
 - [x] Columna `match_minute INTEGER` en tabla `matches` (migración `20260427000000`) + worker la actualiza desde `fixture.status.elapsed`. `LiveMatchStats` lee el minuto real de DB.
+- [x] **Fix minutos desfasados en vivo (15 mayo):** `minutes_played` de la API tiene ~5 min de retraso vs el minuto real del partido. Nueva columna `is_substitute BOOLEAN` en `player_match_stats` (migración `20260515000000`), worker escribe `stats.games.substitute`. `LiveMatchStats` usa `match_minute` para titulares en vivo (preciso) y `minutes_played` para suplentes (rango correcto).
 
 #### 7. Evaluación automática de picks (cron job) ✅
 - [x] **Sincronización con API deportiva**: worker/cron que actualiza `matches.status` y `player_match_stats` cada ~60 segundos durante partidos en vivo (`sync-live-matches`).
@@ -181,6 +182,8 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] **Backfill (2 mayo):** `total_shots_accumulated` en `user_status` no incluía históricos anteriores al 1 mayo. Corregido con UPDATE de backfill.
 - [x] **Fix (3 mayo):** `SYNC_WINDOW_HOURS` reducido de 24 a 2 — con el cron corriendo cada minuto, sincronizar partidos terminados durante 24h agotaba los 7,500 req/día del plan PRO antes del mediodía. 2h es suficiente para correcciones tardías de stats.
 - [x] **Fix (3 mayo):** `DashboardPickCard` congelado en "POR INICIAR" cuando el partido arrancaba sin que el usuario recargara. Doble fix: (1) SSR siempre trae el status del partido independientemente del deadline; (2) polling arranca en mount y continúa mientras `status !== 'finished'`.
+- [x] **Fix (15 mayo):** usuarios no aprobados eran visibles en el juego. `user_status` se crea al signup antes de la aprobación — el leaderboard los mostraba y `evaluate-picks` los eliminaba por `no_pick`. Fix: leaderboard filtra `users!inner` + `is_approved = true`; Phase A y Phase B de `evaluate-picks` filtran `aliveUserIds` contra usuarios aprobados.
+- [x] **Fix (15 mayo):** porcentajes de Rivales sumaban >100%. `Math.round` individual en cada porcentaje → largest remainder method (siempre suma 100).
 - [ ] **⚠️ Pendiente Mundial:** al cargar el fixture completo (~1 semana antes del 11 jun), hacer prueba end-to-end de un día completo para verificar que sync y evaluate-picks manejan días con partidos de 1pm a 10pm. Con la evaluación per-match (11 mayo) cada pick se evalúa al terminar su partido, pero conviene validar con datos reales del Mundial.
 
 ---

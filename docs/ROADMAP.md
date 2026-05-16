@@ -249,7 +249,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 #### 13. Monitoreo y operación
 - [x] Configurar Sentry para errores en producción — SDK instalado, DSN configurado en Vercel, alertas por email activadas.
 - [x] Configurar Vercel Analytics — habilitado en Vercel Pro, `<Analytics />` en `app/layout.tsx`.
-- [ ] Alertas de DB: queries lentas, conexiones al límite, fallos de sync con API (`database-schema.md §9.4`).
+- [x] ~~Alertas de DB: queries lentas, conexiones al límite.~~ *(Descartado — overengineering para 300-400 usuarios. Supabase Pro incluye monitoreo básico en dashboard.)*
 - [x] Remover página `/health-check` — eliminada el 12 mayo.
 - [x] **Performance UX (5 mayo):** `loading.tsx` en las 4 rutas del juego — componente compartido `PageLoading` con spinner dorado + shimmer cards. Navegación entre pestañas da feedback inmediato. `PickDayNav` convertido a Client Component con `useTransition`: spinner + dim al navegar entre días.
 

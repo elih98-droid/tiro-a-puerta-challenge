@@ -82,6 +82,8 @@ const MAX_LIVE_HOURS = 4;
 /**
  * Returns the list of matches that need syncing right now:
  * - Currently live (status = 'live').
+ * - Suspended (status = 'suspended') — weather delays, etc. Keep monitoring
+ *   until the match resumes and finishes.
  * - Scheduled but kickoff has already passed (status = 'scheduled', missed transition).
  * - Recently finished (within SYNC_WINDOW_HOURS) — API can still correct stats.
  */
@@ -96,6 +98,8 @@ async function getMatchesToSync() {
     .or(
       // Live matches
       `status.eq.live,` +
+      // Suspended matches (weather delay, etc.) — keep syncing until they resume
+      `status.eq.suspended,` +
       // Scheduled matches whose kickoff has already passed (missed by previous run)
       `and(status.eq.scheduled,kickoff_time.lte.${new Date().toISOString()}),` +
       // Recently finished matches (stats can still be corrected within 24h)
@@ -139,11 +143,33 @@ async function syncMatch(match: {
     // Safety net: if a match has been 'live' in our DB for more than MAX_LIVE_HOURS
     // since kickoff, the API likely failed to report the final status. Force it to
     // 'finished' so evaluate-picks isn't blocked indefinitely.
+    //
+    // IMPORTANT: Do NOT force-finish suspended matches. Weather delays (lightning,
+    // storms) can pause a match for 1-2+ hours. The API will report INT/SUSP during
+    // the interruption and resume reporting when play continues. We keep syncing
+    // suspended matches until they naturally finish.
     if (match.status === "live") {
       const kickoffMs = new Date(match.kickoff_time).getTime();
       const hoursElapsed = (Date.now() - kickoffMs) / (1000 * 60 * 60);
 
       if (hoursElapsed > MAX_LIVE_HOURS) {
+        // Before force-finishing, check the API one more time — if it reports
+        // INT or SUSP, the match is legitimately paused, not stuck.
+        const checkFixture = await getFixtureById(fixtureId);
+        const apiShortStatus = checkFixture?.fixture.status.short;
+
+        if (apiShortStatus === "INT" || apiShortStatus === "SUSP") {
+          // Match is interrupted/suspended — update our DB status and skip force-finish
+          console.warn(
+            `Match ${match.id} has been live for ${hoursElapsed.toFixed(1)}h but API reports ${apiShortStatus} — marking suspended, not force-finishing.`
+          );
+          await supabase
+            .from("matches")
+            .update({ status: "suspended", match_minute: checkFixture?.fixture.status.elapsed ?? null })
+            .eq("id", match.id);
+          return { matchId: match.id, playersUpdated: 0 };
+        }
+
         console.warn(
           `Match ${match.id} has been live for ${hoursElapsed.toFixed(1)}h — force-finishing.`
         );

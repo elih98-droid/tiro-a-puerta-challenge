@@ -295,18 +295,20 @@ function LiveCard({
   }, [data.status, fetchLive])
 
   const isLive       = data.status === 'live'
+  const isSuspended  = data.status === 'suspended'
   const isFinished   = data.status === 'finished'
   const isScheduled  = data.status === 'scheduled'
+  const isInPlay     = isLive || isSuspended // match has started, stats are available
   const hasSot       = data.shots > 0
 
-  // Indicador de supervivencia — 4 estados:
-  //   ok      → partido terminado con tiro, o en vivo con tiro
+  // Indicador de supervivencia — 5 estados:
+  //   ok      → partido terminado con tiro, o en vivo/suspendido con tiro
   //   bad     → partido terminado sin tiro, o eliminado
-  //   warning → partido en vivo, aún sin tiro (está en riesgo)
+  //   warning → partido en vivo/suspendido, aún sin tiro (está en riesgo)
   //   waiting → partido no ha empezado (pick guardado, esperando)
-  const survivalOk      = pickResult === 'survived' || (isFinished && hasSot) || (isLive && hasSot)
+  const survivalOk      = pickResult === 'survived' || (isFinished && hasSot) || (isInPlay && hasSot)
   const survivalBad     = pickResult === 'eliminated' || (isFinished && !hasSot)
-  const survivalWarning = isLive && !hasSot && !survivalBad
+  const survivalWarning = isInPlay && !hasSot && !survivalBad
   const survivalWaiting = isScheduled
 
   const initials = getPlayerInitials(playerName)
@@ -353,6 +355,24 @@ function LiveCard({
               fontSize: 9, letterSpacing: 1.4, color: P.red, fontWeight: 700,
             }}>
               EN VIVO{data.matchMinute ? ` ${data.matchMinute}'` : ''}
+            </span>
+          </div>
+        )}
+        {isSuspended && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '3px 8px', borderRadius: 4,
+            background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)',
+          }}>
+            <span style={{
+              width: 5, height: 5, borderRadius: '50%', background: '#F59E0B',
+              display: 'inline-block',
+            }} />
+            <span style={{
+              fontFamily: 'var(--font-jetbrains-mono), monospace',
+              fontSize: 9, letterSpacing: 1.4, color: '#F59E0B', fontWeight: 700,
+            }}>
+              SUSPENDIDO{data.matchMinute ? ` ${data.matchMinute}'` : ''}
             </span>
           </div>
         )}
@@ -450,7 +470,7 @@ function LiveCard({
       </div>
 
       {/* Score — solo si el partido empezó */}
-      {(isLive || isFinished) && (
+      {(isInPlay || isFinished) && (
         <>
           <div style={{
             marginTop: 14, padding: '10px 12px',
@@ -506,7 +526,7 @@ function LiveCard({
               }}>
                 {survivalOk && 'Pick asegurado · sigues vivo hoy'}
                 {survivalBad && 'Sin tiros a puerta · eliminado'}
-                {!survivalOk && !survivalBad && isLive && 'Necesitas que tu jugador dispare'}
+                {!survivalOk && !survivalBad && isInPlay && 'Necesitas que tu jugador dispare'}
               </div>
             </div>
           </div>

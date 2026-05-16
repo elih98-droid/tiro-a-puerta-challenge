@@ -145,10 +145,12 @@ export default async function DashboardPage() {
   }
 
   // ── Ranking position + alive percentage ──
-  // Fetch all user_status ordered by ranking criteria to find this user's position
+  // Fetch all user_status ordered by ranking criteria to find this user's position.
+  // Filter to approved users only so the rank matches the public leaderboard.
   const { data: allStatuses } = await supabase
     .from('user_status')
-    .select('user_id, is_alive, total_goals_accumulated, total_shots_accumulated')
+    .select('user_id, is_alive, total_goals_accumulated, total_shots_accumulated, users!inner(is_approved)')
+    .eq('users.is_approved', true)
     .order('is_alive',                  { ascending: false })
     .order('total_goals_accumulated',   { ascending: false })
     .order('total_shots_accumulated',   { ascending: false })

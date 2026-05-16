@@ -28,7 +28,10 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   // 'next' is used by the password reset flow to redirect to /update-password.
-  const next = searchParams.get('next') ?? '/dashboard'
+  // Validate that 'next' is a relative path to prevent open redirect attacks
+  // (e.g., ?next=https://evil.com would redirect the authenticated user off-site).
+  const rawNext = searchParams.get('next') ?? '/dashboard'
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
 
   if (code) {
     const cookieStore = await cookies()

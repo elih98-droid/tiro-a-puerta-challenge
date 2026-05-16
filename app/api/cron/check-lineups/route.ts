@@ -82,6 +82,7 @@ interface CheckResult {
   matchId: number;
   lineupsAvailable: boolean;
   warningsSent: number;
+  emailsFailed?: number;
   error?: string;
 }
 
@@ -188,6 +189,7 @@ async function checkLineupsForMatch(match: {
 
   // Step 8: Send warning emails
   let warningsSent = 0;
+  let emailsFailed = 0;
 
   for (const pick of affectedPicks) {
     const user = userById.get(pick.user_id);
@@ -212,13 +214,19 @@ async function checkLineupsForMatch(match: {
       warningsSent++;
     } else {
       console.error(`[check-lineups] Failed to send to ${user.email}: ${result.error}`);
+      emailsFailed++;
     }
   }
 
-  // Step 9: Mark match as lineups notified
-  await markLineupsNotified(match.id);
+  // Step 9: Only mark as notified if all emails succeeded.
+  // If any failed, leave lineups_notified = FALSE so the next cron run retries.
+  if (emailsFailed === 0) {
+    await markLineupsNotified(match.id);
+  } else {
+    console.warn(`[check-lineups] ${emailsFailed} email(s) failed for match ${match.id} — will retry next run`);
+  }
 
-  return { matchId: match.id, lineupsAvailable: true, warningsSent };
+  return { matchId: match.id, lineupsAvailable: true, warningsSent, emailsFailed };
 }
 
 /**

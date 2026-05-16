@@ -18,6 +18,8 @@ export default async function LeaderboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Only show approved users in the leaderboard — unapproved users
+  // have user_status rows (created at signup) but shouldn't be visible.
   const { data: rows, error } = await supabase
     .from('user_status')
     .select(`
@@ -27,8 +29,9 @@ export default async function LeaderboardPage() {
       total_goals_accumulated,
       total_shots_accumulated,
       elimination_reason,
-      users ( username )
+      users!inner ( username )
     `)
+    .eq('users.is_approved', true)
     .order('is_alive',                  { ascending: false })
     .order('total_goals_accumulated',   { ascending: false })
     .order('total_shots_accumulated',   { ascending: false })

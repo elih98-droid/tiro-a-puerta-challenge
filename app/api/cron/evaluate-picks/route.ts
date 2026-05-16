@@ -277,7 +277,17 @@ async function applyResult(
  * and eliminates them (game-rules.md §4.2, E1 — 'no_pick').
  */
 async function eliminateNoPickWithIds(matchDayId: number): Promise<{ count: number; userIds: string[] }> {
-  // Get all currently alive users
+  // Get all currently alive AND approved users.
+  // Unapproved users are excluded — they can't make picks yet, so penalizing
+  // them for 'no_pick' would be incorrect.
+  const { data: approvedUsers, error: approvedError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("is_approved", true);
+
+  if (approvedError) throw new Error(`Failed to fetch approved users: ${approvedError.message}`);
+  const approvedUserIds = new Set((approvedUsers ?? []).map((u) => u.id));
+
   const { data: aliveUsers, error: aliveError } = await supabase
     .from("user_status")
     .select("user_id")
@@ -285,6 +295,10 @@ async function eliminateNoPickWithIds(matchDayId: number): Promise<{ count: numb
 
   if (aliveError) throw new Error(`Failed to fetch alive users: ${aliveError.message}`);
   if (!aliveUsers?.length) return { count: 0, userIds: [] };
+
+  // Filter to only approved users
+  const aliveApprovedUsers = aliveUsers.filter((u) => approvedUserIds.has(u.user_id));
+  if (!aliveApprovedUsers.length) return { count: 0, userIds: [] };
 
   // Get user_ids that have a locked pick for this day
   const { data: pickedUsers, error: pickedError } = await supabase
@@ -297,8 +311,8 @@ async function eliminateNoPickWithIds(matchDayId: number): Promise<{ count: numb
 
   const pickedUserIds = new Set((pickedUsers ?? []).map((p) => p.user_id));
 
-  // Users who are alive but didn't pick
-  const noPickUserIds = aliveUsers
+  // Users who are alive + approved but didn't pick
+  const noPickUserIds = aliveApprovedUsers
     .map((u) => u.user_id)
     .filter((id) => !pickedUserIds.has(id));
 
@@ -418,16 +432,28 @@ async function evaluatePicksForFinishedMatches(): Promise<{
   let evaluated = 0;
   const pendingEmails: PendingEliminationEmail[] = [];
 
-  // Only evaluate picks for users still alive in the game.
+  // Only evaluate picks for users who are alive AND approved.
   // Eliminated users' pre-picks are skipped entirely — no result is written,
   // avoiding misleading 'survived' entries on /my-picks for already-out players.
+  // Unapproved users are excluded so they don't get evaluated/eliminated
+  // before an admin approves them (they can't even make picks yet).
+  const { data: approvedUsers, error: approvedError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("is_approved", true);
+
+  if (approvedError) throw new Error(`Failed to fetch approved users: ${approvedError.message}`);
+  const approvedUserIds = new Set((approvedUsers ?? []).map((u) => u.id));
+
   const { data: aliveStatuses, error: aliveError } = await supabase
     .from("user_status")
     .select("user_id")
     .eq("is_alive", true);
 
   if (aliveError) throw new Error(`Failed to fetch alive users: ${aliveError.message}`);
-  const aliveUserIds = (aliveStatuses ?? []).map((s) => s.user_id);
+  const aliveUserIds = (aliveStatuses ?? [])
+    .map((s) => s.user_id)
+    .filter((id) => approvedUserIds.has(id));
   if (aliveUserIds.length === 0) return { evaluated: 0, pendingEmails: [], errors: [] };
 
   // Get all locked picks with no result yet, for alive users only

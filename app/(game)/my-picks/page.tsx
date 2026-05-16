@@ -113,9 +113,18 @@ export default async function MyPicksPage({
       )
     `)
     .eq('user_id', user!.id)
-    .order('match_day_id', { ascending: false })
 
-  const picks = rawPicks ?? []
+  // Sort by match_date descending (most recent first).
+  // Can't use .order('match_days.match_date') on a relation in Supabase,
+  // and .order('match_day_id') breaks when match_days were inserted out of
+  // order (re-seeds, seed-missing-matchday script, etc.).
+  const picks = (rawPicks ?? []).sort((a, b) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dateA = (a.match_days as any)?.match_date ?? ''
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dateB = (b.match_days as any)?.match_date ?? ''
+    return dateB.localeCompare(dateA)
+  })
 
   // ── Rivals data ──────────────────────────────────────────────────────────
   const todayInCdmx = new Intl.DateTimeFormat('en-CA', {
@@ -240,15 +249,38 @@ async function fetchRivalsData(supabase: any, targetDate: string, isToday: boole
     }
   }
 
-  const rivalPicks: RivalPick[] = Array.from(grouped.values())
-    .map(({ player, count }) => ({
-      playerName: player?.display_name ?? '—',
-      position: player?.position ?? '',
-      teamName: player?.teams?.name ?? '—',
-      count,
-      percentage: Math.round((count / totalRevealed) * 100),
-    }))
+  // Use largest-remainder method so percentages always sum to exactly 100%.
+  // Math.round on each value independently can overshoot (e.g. 38+25+25+13 = 101).
+  const entries = Array.from(grouped.values())
+    .map(({ player, count }) => {
+      const exact = (count / totalRevealed) * 100
+      return {
+        playerName: player?.display_name ?? '—',
+        position: player?.position ?? '',
+        teamName: player?.teams?.name ?? '—',
+        count,
+        floor: Math.floor(exact),
+        remainder: exact - Math.floor(exact),
+      }
+    })
     .sort((a, b) => b.count - a.count)
+
+  // Distribute leftover points to entries with the largest remainders
+  let leftover = 100 - entries.reduce((sum, e) => sum + e.floor, 0)
+  const byRemainder = [...entries].sort((a, b) => b.remainder - a.remainder)
+  for (const entry of byRemainder) {
+    if (leftover <= 0) break
+    entry.floor++
+    leftover--
+  }
+
+  const rivalPicks: RivalPick[] = entries.map((e) => ({
+    playerName: e.playerName,
+    position: e.position,
+    teamName: e.teamName,
+    count: e.count,
+    percentage: e.floor,
+  }))
 
   return {
     ...base,

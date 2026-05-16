@@ -38,6 +38,7 @@ interface PlayerStats {
   shots_on_target: number
   goals: number
   minutes_played: number
+  is_substitute: boolean
   last_api_sync_at: string | null
 }
 
@@ -68,7 +69,7 @@ export function LiveMatchStats({ matchId, playerId }: LiveMatchStatsProps) {
 
     const { data: statsData } = await supabase
       .from('player_match_stats')
-      .select('shots_on_target, goals, minutes_played, last_api_sync_at')
+      .select('shots_on_target, goals, minutes_played, is_substitute, last_api_sync_at')
       .eq('match_id', matchId)
       .eq('player_id', playerId)
       .maybeSingle()
@@ -121,8 +122,19 @@ export function LiveMatchStats({ matchId, playerId }: LiveMatchStatsProps) {
   const liveMinute    = isLive && match.match_minute != null ? `${match.match_minute}'` : null
   const shotsOnTarget = stats?.shots_on_target ?? 0
   const goals         = stats?.goals ?? 0
-  const minutesPlayed = stats?.minutes_played ?? 0
   const hasShotOnTarget = shotsOnTarget > 0
+
+  // While the match is live, player_match_stats.minutes_played lags behind
+  // the actual match minute (API-Football updates it with a ~5 min delay).
+  // For starters this creates a confusing mismatch (badge says 58' but stats
+  // say 53 min). Fix: use match_minute for starters during live matches
+  // (accurate — they've played since minute 0). For substitutes, keep
+  // minutes_played (imperfect but in the correct range — we don't know their
+  // entry minute). After the match ends, always use the final API value.
+  const isStarter = stats ? !stats.is_substitute : true
+  const minutesPlayed = (isLive && isStarter && match.match_minute != null)
+    ? match.match_minute
+    : (stats?.minutes_played ?? 0)
 
   return (
     <div style={{

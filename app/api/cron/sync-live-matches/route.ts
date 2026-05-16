@@ -223,6 +223,7 @@ async function syncMatch(match: {
       goals: number;
       own_goals: number;
       was_red_carded: boolean;
+      is_substitute: boolean;
       is_final: boolean;
       last_api_sync_at: string;
     }> = [];
@@ -255,6 +256,7 @@ async function syncMatch(match: {
           goals: stats.goals.total ?? 0,
           own_goals: ownGoals,
           was_red_carded: stats.cards.red > 0,
+          is_substitute: stats.games.substitute ?? false,
           // Mark as final only after the match is finished.
           // The evaluate-picks cron will use is_final = true as its trigger.
           is_final: newStatus === "finished",

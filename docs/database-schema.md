@@ -224,6 +224,7 @@ Estadísticas de cada jugador en cada partido que jugó. **Tabla crítica para l
 | `goals` | `INTEGER` NOT NULL DEFAULT 0 | Goles (tiempo regular + tiempo extra, NO penales de tanda). |
 | `own_goals` | `INTEGER` NOT NULL DEFAULT 0 | Autogoles. NO cuentan para supervivencia ni desempate. |
 | `was_red_carded` | `BOOLEAN` DEFAULT FALSE | |
+| `is_substitute` | `BOOLEAN` NOT NULL DEFAULT FALSE | FALSE = titular (Starting XI), TRUE = entró de cambio. Fuente: `stats.games.substitute` de API-Football. |
 | `is_final` | `BOOLEAN` DEFAULT FALSE | TRUE cuando pasan 24h del final del partido y la data se congela. |
 | `last_api_sync_at` | `TIMESTAMPTZ` | Última vez que este registro se sincronizó con la API. |
 | `created_at` | `TIMESTAMPTZ` DEFAULT NOW() | |
@@ -534,6 +535,7 @@ CREATE TABLE player_match_stats (
   goals INTEGER NOT NULL DEFAULT 0,
   own_goals INTEGER NOT NULL DEFAULT 0,
   was_red_carded BOOLEAN DEFAULT FALSE,
+  is_substitute BOOLEAN NOT NULL DEFAULT FALSE,
   is_final BOOLEAN DEFAULT FALSE,
   last_api_sync_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),

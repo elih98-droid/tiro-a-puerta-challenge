@@ -28,6 +28,7 @@ import type {
   ApiFixtureStatusShort,
   ApiSquad,
   ApiFixturePlayers,
+  ApiLineupTeam,
   ApiPlayerStatPosition,
   ApiSquadPlayerPosition,
 } from "./types";
@@ -165,6 +166,23 @@ export async function getFixturePlayers(
   fixtureId: number
 ): Promise<ApiFixturePlayers[]> {
   const data = await apiFetch<ApiFixturePlayers>("/fixtures/players", {
+    fixture: fixtureId,
+  });
+  return data.response;
+}
+
+/**
+ * Fetch the confirmed lineups for a fixture.
+ * Available 20–40 minutes before kickoff. Returns an empty array if
+ * lineups haven't been published yet — the caller should retry later.
+ *
+ * Returns one entry per team (home + away), each with startXI and substitutes.
+ * Used by check-lineups cron to warn users whose picked player is benched.
+ */
+export async function getFixtureLineups(
+  fixtureId: number
+): Promise<ApiLineupTeam[]> {
+  const data = await apiFetch<ApiLineupTeam>("/fixtures/lineups", {
     fixture: fixtureId,
   });
   return data.response;

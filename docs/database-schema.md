@@ -206,6 +206,8 @@ Los 104 partidos del Mundial. Se actualizan conforme ocurre la fase eliminatoria
 | `away_score` | `INTEGER` | |
 | `went_to_extra_time` | `BOOLEAN` DEFAULT FALSE | |
 | `went_to_penalties` | `BOOLEAN` DEFAULT FALSE | |
+| `match_minute` | `INTEGER` | Minuto actual del partido (durante live). NULL cuando no está en vivo. |
+| `lineups_notified` | `BOOLEAN` NOT NULL DEFAULT FALSE | TRUE después de que check-lineups verificó las alineaciones. Idempotencia para no re-enviar emails. |
 | `api_external_id` | `TEXT` UNIQUE NOT NULL | ID del partido en la API externa. |
 | `created_at` | `TIMESTAMPTZ` DEFAULT NOW() | |
 | `updated_at` | `TIMESTAMPTZ` DEFAULT NOW() | |

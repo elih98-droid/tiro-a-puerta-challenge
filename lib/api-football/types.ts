@@ -195,6 +195,36 @@ export interface ApiFixturePlayerStats {
   };
 }
 
+// ─── /fixtures/lineups ───────────────────────────────────────────────────────
+
+/**
+ * A player entry in the lineups response.
+ * Available 20–40 minutes before kickoff.
+ */
+export interface ApiLineupPlayer {
+  player: {
+    id: number;
+    name: string;
+    number: number;
+    pos: string;       // "G", "D", "M", "F"
+    grid: string | null; // e.g. "1:1" — null for substitutes
+  };
+}
+
+/**
+ * Lineup data for one team in a fixture.
+ * The response array contains one entry per team (home + away).
+ */
+export interface ApiLineupTeam {
+  team: { id: number; name: string; logo: string };
+  formation: string;    // e.g. "4-3-3"
+  startXI: ApiLineupPlayer[];
+  substitutes: ApiLineupPlayer[];
+  coach: { id: number; name: string; photo: string };
+}
+
+// ─── /fixtures/players ────────────────────────────────────────────────────────
+
 export interface ApiFixturePlayers {
   team: {
     id: number;

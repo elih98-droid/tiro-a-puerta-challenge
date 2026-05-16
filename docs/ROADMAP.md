@@ -218,6 +218,7 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 - [x] Email de verificación de cuenta — template con marca en `lib/email/templates/supabase/confirm-signup.html`. Pegado en Supabase Dashboard → Auth → Email Templates → Confirm signup. Subject: "Confirma tu cuenta — Tiro a Puerta Challenge".
 - [x] Email de recuperación de contraseña — template con marca en `lib/email/templates/supabase/reset-password.html`. Pegado en Supabase Dashboard → Auth → Email Templates → Reset password. Subject: "Recupera tu contraseña — Tiro a Puerta Challenge".
 - [x] Configurar dominio propio de envío en Resend — `tiroapuerta.mx` verificado. `EMAIL_FROM=no-reply@tiroapuerta.mx` en Vercel. DNS configurado via Cloudflare auto-configure.
+- [x] **Email de alerta de alineaciones (15 mayo)** — nuevo cron `check-lineups` (cada 5 min). ~50 min antes del kickoff consulta `/fixtures/lineups` de API-Football. Si el jugador del usuario no es titular, manda email con CTA "Cambiar mi pick". Template `substitute-warning.ts` con identidad Dirección 3. Columna `lineups_notified` en `matches` para idempotencia. Presupuesto: ~18 llamadas/día peor caso Mundial.
 - [ ] Email de notificaciones críticas (cambios de reglas, suspensión del torneo, etc.).
 
 #### 10. Perfil de usuario ✅ (parcial)
@@ -298,7 +299,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Diseño visual (tareas 8–9) | ✅ Completo — todas las pantallas + responsividad desktop |
 | Leaderboard | ✅ Completo (pick de hoy pendiente) |
 | Evaluación automática (cron) | ✅ Completo |
-| Emails transaccionales | ✅ Completo — 6 emails con marca, dominio propio `tiroapuerta.mx` |
+| Emails transaccionales | ✅ Completo — 7 emails con marca, dominio propio `tiroapuerta.mx` |
 | Términos y Condiciones + Privacidad | ✅ Completo — `/terms` con 21 secciones, checkbox obligatorio, `terms_accepted_at` en DB |
 | Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout, reglas; eliminar cuenta pendiente) |
 | Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |

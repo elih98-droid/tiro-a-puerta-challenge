@@ -87,6 +87,37 @@ function isAuthorized(request: NextRequest): boolean {
   return authHeader === `Bearer ${cronSecret}`;
 }
 
+// ─── Helper: get alive + approved user IDs ───────────────────────────────────
+
+/**
+ * Returns the list of user IDs that are both alive in the tournament AND
+ * approved by an admin. Used by Phase A (evaluate) and Phase B (close day)
+ * to ignore picks from eliminated or unapproved users.
+ *
+ * Called separately before each phase so that eliminations from Phase A
+ * are reflected when Phase B runs.
+ */
+async function getAliveApprovedUserIds(): Promise<string[]> {
+  const { data: approvedUsers, error: approvedError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("is_approved", true);
+
+  if (approvedError) throw new Error(`Failed to fetch approved users: ${approvedError.message}`);
+  const approvedUserIds = new Set((approvedUsers ?? []).map((u) => u.id));
+
+  const { data: aliveStatuses, error: aliveError } = await supabase
+    .from("user_status")
+    .select("user_id")
+    .eq("is_alive", true);
+
+  if (aliveError) throw new Error(`Failed to fetch alive users: ${aliveError.message}`);
+
+  return (aliveStatuses ?? [])
+    .map((s) => s.user_id)
+    .filter((id) => approvedUserIds.has(id));
+}
+
 // ─── Step 1: Lock expired picks ───────────────────────────────────────────────
 
 /**
@@ -437,23 +468,7 @@ async function evaluatePicksForFinishedMatches(): Promise<{
   // avoiding misleading 'survived' entries on /my-picks for already-out players.
   // Unapproved users are excluded so they don't get evaluated/eliminated
   // before an admin approves them (they can't even make picks yet).
-  const { data: approvedUsers, error: approvedError } = await supabase
-    .from("users")
-    .select("id")
-    .eq("is_approved", true);
-
-  if (approvedError) throw new Error(`Failed to fetch approved users: ${approvedError.message}`);
-  const approvedUserIds = new Set((approvedUsers ?? []).map((u) => u.id));
-
-  const { data: aliveStatuses, error: aliveError } = await supabase
-    .from("user_status")
-    .select("user_id")
-    .eq("is_alive", true);
-
-  if (aliveError) throw new Error(`Failed to fetch alive users: ${aliveError.message}`);
-  const aliveUserIds = (aliveStatuses ?? [])
-    .map((s) => s.user_id)
-    .filter((id) => approvedUserIds.has(id));
+  const aliveUserIds = await getAliveApprovedUserIds();
   if (aliveUserIds.length === 0) return { evaluated: 0, pendingEmails: [], errors: [] };
 
   // Get all locked picks with no result yet, for alive users only
@@ -565,7 +580,7 @@ async function evaluatePicksForFinishedMatches(): Promise<{
 async function closeMatchDay(day: {
   id: number;
   match_date: string;
-}): Promise<{ noPickEliminated: number; errors: string[] }> {
+}, aliveApprovedUserIds: string[]): Promise<{ noPickEliminated: number; errors: string[] }> {
   const errors: string[] = [];
   const pendingEmails: PendingEliminationEmail[] = [];
 
@@ -592,13 +607,19 @@ async function closeMatchDay(day: {
   // remain unevaluated. The second check guards against a race condition where
   // Phase A hasn't caught up yet — without this, is_processed would be set to
   // TRUE and those picks would be skipped forever.
-  if (errors.length === 0) {
+  //
+  // Only count picks from alive+approved users as "remaining". Pre-picks
+  // from eliminated or unapproved users should never block day closure.
+  let hasRemainingPicks = false;
+
+  if (errors.length === 0 && aliveApprovedUserIds.length > 0) {
     const { data: remainingPicks, error: remainingError } = await supabase
       .from("user_picks")
       .select("id")
       .eq("match_day_id", day.id)
       .eq("is_locked", true)
       .is("result", null)
+      .in("user_id", aliveApprovedUserIds)
       .limit(1);
 
     if (remainingError) {
@@ -606,30 +627,33 @@ async function closeMatchDay(day: {
         `Failed to verify remaining picks for day ${day.id}: ${remainingError.message}`
       );
     } else if (remainingPicks && remainingPicks.length > 0) {
-      // Phase A hasn't finished evaluating — don't close yet, retry next run.
-      console.warn(
-        `Day ${day.id} has unevaluated locked picks remaining — not marking as processed.`
-      );
-    } else {
-      const { error: markError } = await supabase
-        .from("match_days")
-        .update({ is_processed: true })
-        .eq("id", day.id);
-
-      if (markError) {
-        errors.push(
-          `Failed to mark day ${day.id} as processed: ${markError.message}`
-        );
-      } else {
-        console.log(
-          `Match day ${day.id} (${day.match_date}) marked as processed.`
-        );
-      }
+      hasRemainingPicks = true;
     }
-  } else {
+  }
+
+  if (errors.length > 0) {
     console.warn(
       `Day ${day.id} had ${errors.length} error(s) — not marking as processed.`
     );
+  } else if (hasRemainingPicks) {
+    console.warn(
+      `Day ${day.id} has unevaluated locked picks remaining — not marking as processed.`
+    );
+  } else {
+    const { error: markError } = await supabase
+      .from("match_days")
+      .update({ is_processed: true })
+      .eq("id", day.id);
+
+    if (markError) {
+      errors.push(
+        `Failed to mark day ${day.id} as processed: ${markError.message}`
+      );
+    } else {
+      console.log(
+        `Match day ${day.id} (${day.match_date}) marked as processed.`
+      );
+    }
   }
 
   // Send no-pick elimination emails (fire-and-forget)
@@ -666,12 +690,15 @@ export async function GET(request: NextRequest) {
 
     // 3. Phase B: close completed days (no-pick elimination + is_processed).
     //    Only runs when ALL matches of a day are finished/cancelled.
+    //    Re-fetch alive+approved users AFTER Phase A, since Phase A may have
+    //    eliminated some users — their pre-picks should not block day closure.
     const processableDays = await getProcessableMatchDays();
+    const aliveApprovedForPhaseB = await getAliveApprovedUserIds();
     const dayResults = [];
 
     for (const day of processableDays) {
       console.log(`[Phase B] Closing match day ${day.id} (${day.match_date})...`);
-      const result = await closeMatchDay(day);
+      const result = await closeMatchDay(day, aliveApprovedForPhaseB);
       dayResults.push({
         match_day_id: day.id,
         match_date: day.match_date,

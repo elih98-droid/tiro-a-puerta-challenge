@@ -120,11 +120,11 @@ export function PickClient({
   }
 
   function handleConfirm() {
-    if (!selectedPlayerId || !selectedMatchId || !selectedDeadline) return
+    if (!selectedPlayerId) return
     setActionError(null)
     startTransition(async () => {
       const res = await submitPick(
-        selectedPlayerId, selectedMatchId, matchDay.id, selectedDeadline,
+        selectedPlayerId, matchDay.id,
       )
       if (res.error) {
         setActionError(res.error)

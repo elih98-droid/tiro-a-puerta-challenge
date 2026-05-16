@@ -38,9 +38,7 @@ import { checkSuspiciousActivity } from '@/lib/admin/alerts'
  */
 export async function submitPick(
   playerId: number,
-  matchId: number,
   matchDayId: number,
-  effectiveDeadline: string,
 ): Promise<{ error?: string }> {
   // Rate limit by IP
   const headersList = await headers()
@@ -67,14 +65,47 @@ export async function submitPick(
     return { error: 'Ya estás eliminado del torneo y no puedes hacer picks.' }
   }
 
-  // 3. Deadline of the new player's match must not have passed
+  // 3. Look up player in DB — verify they exist and are active
+  const { data: player } = await supabase
+    .from('players')
+    .select('id, team_id, is_active')
+    .eq('id', playerId)
+    .single()
+
+  if (!player) {
+    return { error: 'Jugador no encontrado.' }
+  }
+  if (!player.is_active) {
+    return { error: 'Este jugador no está activo en el torneo.' }
+  }
+
+  // 4. Find the match where this player's team plays on this match day
+  const { data: matches } = await supabase
+    .from('matches')
+    .select('id, pick_deadline')
+    .eq('match_day_id', matchDayId)
+    .or(`home_team_id.eq.${player.team_id},away_team_id.eq.${player.team_id}`)
+
+  // 4.5. Validate exactly 1 match found
+  if (!matches || matches.length === 0) {
+    return { error: 'Este jugador no tiene partido en el día seleccionado.' }
+  }
+  if (matches.length > 1) {
+    // Data inconsistency — a team shouldn't play twice on the same match day
+    console.error(`submitPick: found ${matches.length} matches for team ${player.team_id} on match_day ${matchDayId}`)
+    return { error: 'Error de datos: se encontró más de un partido para este equipo en el día. Contacta al admin.' }
+  }
+
+  const match = matches[0]
+  const matchId = match.id
+  const effectiveDeadline = match.pick_deadline
+
+  // 5. Deadline of the match must not have passed (using DB value, not client)
   if (new Date(effectiveDeadline) <= new Date()) {
     return { error: 'El deadline de este partido ya venció. Elige un jugador de un partido que aún no haya iniciado.' }
   }
 
-  // 4. Player must not be burned from a previous day (game-rules.md §3.4).
-  //    We check user_picks (not pick_history) for simplicity in the MVP.
-  //    This correctly catches cross-day repeats for the final submitted pick.
+  // 6. Player must not be burned from a previous day (game-rules.md §3.4)
   const { data: previousPicks } = await supabase
     .from('user_picks')
     .select('player_id')
@@ -86,9 +117,8 @@ export async function submitPick(
     return { error: 'Ya elegiste a este jugador en un día anterior. Está quemado.' }
   }
 
-  // Save the pick. Since there's a UNIQUE constraint on (user_id, match_day_id),
-  // this upsert will INSERT on the first pick of the day, and UPDATE if the user
-  // is changing their pick (before deadline).
+  // 7. Save the pick with DB-verified match_id and effective_deadline.
+  //    UNIQUE constraint on (user_id, match_day_id) handles upsert.
   const { error: upsertError } = await supabase
     .from('user_picks')
     .upsert(

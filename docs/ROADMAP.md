@@ -288,7 +288,7 @@ Auditoría completa realizada el 16 de mayo. Estos son los hallazgos pendientes 
 - [ ] **Rivales incluye picks de no aprobados** — `my-picks/page.tsx`. Infla porcentajes. Filtrar `is_approved = true`.
 - [ ] **Leaderboard: 3er desempate (fecha de registro)** — `game-rules.md §5.3` dice usar `created_at`. No implementado.
 - [ ] **Deadline de picks no se actualiza si partido se reprograma** — Si un partido cambia de hora, `effective_deadline` del pick queda con el valor viejo. Trigger en `matches` o notificación manual.
-- [ ] **Plan de contingencia para partidos interrumpidos** — En el Mundial de Clubes 2025 (EUA), partidos se interrumpieron por tormentas eléctricas y reanudaron 1-2h después. Definir cómo manejar: ¿el force-finish de 4h es suficiente? ¿Qué pasa con stats parciales? ¿Notificar a usuarios?
+- [x] **Plan de contingencia para partidos interrumpidos** — `sync-live-matches` ahora incluye `suspended` en la query de matches a sincronizar. Force-finish consulta la API antes de forzar: si reporta INT/SUSP, marca como `suspended` en vez de `finished`. Dashboard muestra badge "SUSPENDIDO" (amber) con stats acumulados. Player stats no se fetchean durante la pausa (ahorro de 60 calls/hora). Presupuesto: ~77h de suspensión antes de tocar el límite de API.
 
 **Pendientes — Performance (nice-to-have para 400 users):**
 - [ ] Polling sin jitter en `dashboard-pick-card` y `live-match-stats` — thundering herd a escala.

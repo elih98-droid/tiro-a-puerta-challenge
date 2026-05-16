@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 15 de mayo de 2026 (anti-cheat: rate limiting, device fingerprinting, alertas automáticas)
+**Última actualización:** 15 de mayo de 2026 (anti-cheat completo, emails de contacto configurados, cleanup de pendientes)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---

@@ -501,8 +501,50 @@ async function evaluatePicksForFinishedMatches(): Promise<{
 
   if (evaluablePicks.length === 0) return { evaluated: 0, pendingEmails: [], errors: [] };
 
+  // Safety check: for finished matches, verify that player_match_stats has been
+  // synced before evaluating. If sync-live-matches failed (API down, rate limit),
+  // a finished match could have zero stats rows. Without this check, every pick
+  // for that match would be evaluated as "void_did_not_play" → unfair elimination.
+  // Cancelled matches don't need stats (user survives automatically).
+  const finishedMatchIds = [...matchIds].filter(
+    (id) => matchStatusById.get(id) === "finished"
+  );
+
+  let matchesWithStats = new Set<number>();
+  if (finishedMatchIds.length > 0) {
+    const { data: statsCounts, error: statsCountError } = await supabase
+      .from("player_match_stats")
+      .select("match_id")
+      .in("match_id", finishedMatchIds);
+
+    if (statsCountError) {
+      throw new Error(`Failed to verify stats existence: ${statsCountError.message}`);
+    }
+
+    matchesWithStats = new Set((statsCounts ?? []).map((s) => s.match_id));
+
+    // Log warnings for finished matches missing stats (sync likely failed)
+    for (const id of finishedMatchIds) {
+      if (!matchesWithStats.has(id)) {
+        console.warn(
+          `[Phase A] Match ${id} is finished but has no player_match_stats — skipping evaluation (sync may have failed)`
+        );
+      }
+    }
+  }
+
+  // Filter out picks for finished matches that have no stats (sync failure).
+  // Keep cancelled match picks (they don't need stats).
+  const safeEvaluablePicks = evaluablePicks.filter((p) => {
+    const status = matchStatusById.get(p.match_id);
+    if (status === "cancelled") return true;
+    return matchesWithStats.has(p.match_id);
+  });
+
+  if (safeEvaluablePicks.length === 0) return { evaluated: 0, pendingEmails: [], errors: [] };
+
   // Get match_day dates (needed for elimination emails)
-  const dayIds = [...new Set(evaluablePicks.map((p) => p.match_day_id))];
+  const dayIds = [...new Set(safeEvaluablePicks.map((p) => p.match_day_id))];
   const { data: days } = await supabase
     .from("match_days")
     .select("id, match_date")
@@ -510,7 +552,7 @@ async function evaluatePicksForFinishedMatches(): Promise<{
   const dateByDayId = new Map((days ?? []).map((d) => [d.id, d.match_date]));
 
   // Evaluate each pick sequentially
-  for (const pick of evaluablePicks) {
+  for (const pick of safeEvaluablePicks) {
     const matchStatus = matchStatusById.get(pick.match_id) ?? "finished";
 
     try {

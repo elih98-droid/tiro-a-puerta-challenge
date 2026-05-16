@@ -268,6 +268,39 @@ Panel de seguimiento en tiempo real visible en `/pick` y `/dashboard` una vez qu
 
 ---
 
+### 🔴 PRIORIDAD ALTA — Auditoría pre-Mundial (hallazgos sesión 16 mayo)
+
+Auditoría completa realizada el 16 de mayo. Estos son los hallazgos pendientes que deben resolverse antes del 11 de junio.
+
+#### 15. Hallazgos de auditoría pendientes
+
+**Resueltos en esta sesión (16 mayo):**
+- [x] `submitPick` — validación server-side completa (no confiar en datos del cliente)
+- [x] `closeMatchDay` — pre-picks de eliminados no bloquean cierre de día
+- [x] Open redirect en `/auth/callback` — validar `next` como path relativo
+- [x] Dashboard rank — filtrar solo usuarios aprobados
+- [x] `check-lineups` — no marcar notificado si emails fallan (retry en próxima corrida)
+- [x] `evaluate-picks` — verificar existencia de stats antes de evaluar (previene eliminación por sync failure)
+- [x] Lint limpio — 2 errores + 6 warnings resueltos
+
+**Pendientes — Seguridad y lógica:**
+- [ ] **OAuth redirect usa header `origin`** — `lib/auth/actions.ts:230`. Debería usar `NEXT_PUBLIC_APP_URL` en vez del header (controlable por cliente).
+- [ ] **Rivales incluye picks de no aprobados** — `my-picks/page.tsx`. Infla porcentajes. Filtrar `is_approved = true`.
+- [ ] **Leaderboard: 3er desempate (fecha de registro)** — `game-rules.md §5.3` dice usar `created_at`. No implementado.
+- [ ] **Deadline de picks no se actualiza si partido se reprograma** — Si un partido cambia de hora, `effective_deadline` del pick queda con el valor viejo. Trigger en `matches` o notificación manual.
+- [ ] **Plan de contingencia para partidos interrumpidos** — En el Mundial de Clubes 2025 (EUA), partidos se interrumpieron por tormentas eléctricas y reanudaron 1-2h después. Definir cómo manejar: ¿el force-finish de 4h es suficiente? ¿Qué pasa con stats parciales? ¿Notificar a usuarios?
+
+**Pendientes — Performance (nice-to-have para 400 users):**
+- [ ] Polling sin jitter en `dashboard-pick-card` y `live-match-stats` — thundering herd a escala.
+- [ ] `send-pick-reminders` envía emails secuencialmente — usar `Promise.allSettled`.
+- [ ] Emails de eliminación fire-and-forget sin retry.
+
+**Deuda técnica documentada (no urgente):**
+- [ ] Race condition read-modify-write en `user_status` counters — safe a 400 users con cron secuencial. Fix futuro: RPC con `SET col = col + N`.
+- [ ] Regla de 24h de finalidad (`game-rules.md §6.5`) — evaluamos inmediatamente al terminar. Documentado como decisión de MVP.
+
+---
+
 ### ⚪ DECISIONES ABIERTAS (bloquean o condicionan algunas tareas)
 
 Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas afectadas:
@@ -304,6 +337,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Emails transaccionales | ✅ Completo — 7 emails con marca, dominio propio `tiroapuerta.mx` |
 | Términos y Condiciones + Privacidad | ✅ Completo — `/terms` con 21 secciones, checkbox obligatorio, `terms_accepted_at` en DB |
 | Anti-trampa y seguridad | ✅ Completo — rate limiting, fingerprinting, alertas automáticas |
+| Auditoría pre-Mundial | 🔄 En progreso — 7 fixes aplicados, ~8 pendientes (ver §15) |
 | Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout, reglas; eliminar cuenta pendiente) |
 | Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |
 | Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos) |

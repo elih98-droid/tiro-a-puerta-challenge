@@ -223,10 +223,12 @@ async function syncMatch(match: {
       throw new Error(`Failed to update match ${match.id} status: ${matchUpdateError.message}`);
     }
 
-    // Step 3: Fetch and upsert player stats (only if match has started).
-    // A match that is still 'scheduled' after our status check just started —
-    // API might not have player data yet; skip to avoid empty upserts.
-    if (newStatus === "scheduled") {
+    // Step 3: Fetch and upsert player stats (only if match is actively in play).
+    // Skip fetching player stats when:
+    // - 'scheduled': match hasn't started, API has no player data yet.
+    // - 'suspended': match is paused (weather delay, etc.) — stats won't change
+    //   until play resumes. Saves 1 API call/minute during suspensions.
+    if (newStatus === "scheduled" || newStatus === "suspended") {
       return { matchId: match.id, playersUpdated: 0 };
     }
 

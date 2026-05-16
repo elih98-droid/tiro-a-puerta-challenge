@@ -691,12 +691,14 @@ export async function GET(request: NextRequest) {
     //    Re-fetch alive+approved users AFTER Phase A, since Phase A may have
     //    eliminated some users — their pre-picks should not block day closure.
     const processableDays = await getProcessableMatchDays();
-    const aliveApprovedForPhaseB = await getAliveApprovedUserIds();
     const dayResults = [];
 
     for (const day of processableDays) {
+      // Re-fetch alive+approved users on each iteration — closeMatchDay
+      // eliminates no_pick users, so the list must be fresh for the next day.
+      const aliveApprovedForDay = await getAliveApprovedUserIds();
       console.log(`[Phase B] Closing match day ${day.id} (${day.match_date})...`);
-      const result = await closeMatchDay(day, aliveApprovedForPhaseB);
+      const result = await closeMatchDay(day, aliveApprovedForDay);
       dayResults.push({
         match_day_id: day.id,
         match_date: day.match_date,

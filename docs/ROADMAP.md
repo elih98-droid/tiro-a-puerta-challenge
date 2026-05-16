@@ -272,7 +272,7 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 
 - [x] **Proveedor de datos deportivos** — **API-Football** (api-football.com). Plan PRO, 3 meses. API key configurada en `.env.local`.
 - [x] **Modelo económico y premios** — Decidido: premio $150,000 MXN al ganador, premios para Top 5, entrada $1,000 MXN por participante.
-- [x] **Estructura legal (T&C + Privacidad)** — Página `/terms` con 21 secciones: T&C completos + Aviso de Privacidad LFPDPPP. Organizadores: Elías Hale, Daniel Occelli, Víctor Bensimon. Checkbox obligatorio en signup y complete-profile. Columna `terms_accepted_at` en `public.users`. Pendiente: configurar emails `privacidad@tiroapuerta.mx` y `contacto@tiroapuerta.mx`.
+- [x] **Estructura legal (T&C + Privacidad)** — Página `/terms` con 21 secciones: T&C completos + Aviso de Privacidad LFPDPPP. Organizadores: Elías Hale, Daniel Occelli, Víctor Bensimon. Checkbox obligatorio en signup y complete-profile. Columna `terms_accepted_at` en `public.users`. Emails `privacidad@tiroapuerta.mx` y `contacto@tiroapuerta.mx` configurados (Cloudflare Email Routing → Gmail).
 - [ ] **Ventana exacta del recordatorio de pick** (`game-rules.md §13.5`).
 - [x] **Criterios de desempate secundarios** — Resuelto: tiros totales acumulados (`total_shots_accumulated`) como segundo desempate. `game-rules.md §5.3` actualizado.
 - [x] **Branding y diseño visual** — Identidad Dirección 3 implementada en todas las pantallas. Paleta, tipografía, `TPMark` SVG, sistema de diseño completo.

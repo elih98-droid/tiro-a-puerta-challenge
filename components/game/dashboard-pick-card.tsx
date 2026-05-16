@@ -287,9 +287,11 @@ function LiveCard({
   // fetch, polling would never start and the card would be stuck at POR INICIAR.
   useEffect(() => {
     if (data.status === 'finished') return
-    fetchLive() // get current state right away
+    // Fetch immediately on mount via a microtask to avoid synchronous
+    // setState within the effect body (react-hooks/set-state-in-effect).
+    const timeout = setTimeout(fetchLive, 0)
     const id = setInterval(fetchLive, POLL_MS)
-    return () => clearInterval(id)
+    return () => { clearTimeout(timeout); clearInterval(id) }
   }, [data.status, fetchLive])
 
   const isLive       = data.status === 'live'

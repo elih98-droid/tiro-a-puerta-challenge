@@ -147,9 +147,8 @@ function Field({
 // ── DarkCheckbox ───────────────────────────────────────────────
 
 function DarkCheckbox({
-  id, name, label, hint, required = false, linkHref, linkLabel,
+  name, label, hint, required = false, linkHref, linkLabel,
 }: {
-  id: string
   name: string
   label: string
   hint?: string
@@ -327,17 +326,17 @@ export function CompleteProfileForm() {
           {/* Checkboxes */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 6 }}>
             <DarkCheckbox
-              id="over_18_confirmed" name="over_18_confirmed" required
+              name="over_18_confirmed" required
               label="Confirmo que soy mayor de 18 años"
             />
             <DarkCheckbox
-              id="terms_accepted" name="terms_accepted" required
+              name="terms_accepted" required
               label="Acepto los Términos y Condiciones"
               linkHref="/terms"
               linkLabel="Leer Términos y Condiciones"
             />
             <DarkCheckbox
-              id="marketing_emails_opt_in" name="marketing_emails_opt_in"
+              name="marketing_emails_opt_in"
               label="Quiero recibir resúmenes y novedades del torneo"
               hint="Opcional — puedes cancelarlo en cualquier momento"
             />

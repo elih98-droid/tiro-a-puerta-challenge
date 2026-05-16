@@ -82,9 +82,10 @@ export function LiveMatchStats({ matchId, playerId }: LiveMatchStatsProps) {
   }, [matchId, playerId])
 
   useEffect(() => {
-    fetchData()
+    // Use setTimeout(0) to avoid synchronous setState within the effect body
+    const timeout = setTimeout(fetchData, 0)
     const interval = setInterval(fetchData, POLL_INTERVAL_MS)
-    return () => clearInterval(interval)
+    return () => { clearTimeout(timeout); clearInterval(interval) }
   }, [fetchData])
 
   // Loading

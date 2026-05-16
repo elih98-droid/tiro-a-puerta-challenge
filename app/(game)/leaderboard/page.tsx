@@ -48,7 +48,6 @@ export default async function LeaderboardPage() {
 
   const totalParticipants = rows.length
   const aliveCount        = rows.filter(r => r.is_alive).length
-  const eliminatedCount   = totalParticipants - aliveCount
 
   // Assign numeric rank only to alive users
   let aliveRank = 0
@@ -59,7 +58,6 @@ export default async function LeaderboardPage() {
 
   // Show top 50 users per section. If the current user is outside the top 50,
   // append them at the end so they always see their own row.
-  const TOP_N = 50
   const allAlive      = ranked.filter(r => r.is_alive)
   const allEliminated = ranked.filter(r => !r.is_alive)
 

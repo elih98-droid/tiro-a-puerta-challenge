@@ -29,7 +29,6 @@ import {
   getFixtureById,
   getFixturePlayers,
   mapFixtureStatus,
-  mapPlayerStatPosition,
 } from "@/lib/api-football/client";
 
 // ─── Supabase admin client ────────────────────────────────────────────────────

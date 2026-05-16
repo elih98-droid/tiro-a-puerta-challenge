@@ -6,6 +6,16 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { sendEmail } from '@/lib/email/send'
 import { newSignupEmailTemplate } from '@/lib/email/templates/new-signup'
+import { checkRateLimit, formatRetryAfter } from '@/lib/rate-limit'
+import { hashUA } from '@/lib/utils/hash'
+import { checkSuspiciousActivity } from '@/lib/admin/alerts'
+
+// ─── IP helper ────────────────────────────────────────────────────────────────
+
+async function getClientIp(): Promise<string> {
+  const headersList = await headers()
+  return headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
 
 // ─── Email helper ──────────────────────────────────────────────────────────────
 
@@ -86,6 +96,13 @@ export async function signUp(
   prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  // Rate limit by IP
+  const ip = await getClientIp()
+  const rl = checkRateLimit('signUp', ip)
+  if (!rl.ok) {
+    return { error: `Demasiados intentos de registro. Espera ${formatRetryAfter(rl.retryAfterMs)}.` }
+  }
+
   const email = (formData.get('email') as string)?.trim().toLowerCase()
   const password = formData.get('password') as string
   const username = (formData.get('username') as string)?.trim()
@@ -148,6 +165,13 @@ export async function signIn(
   prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  // Rate limit by IP
+  const ip = await getClientIp()
+  const rl = checkRateLimit('signIn', ip)
+  if (!rl.ok) {
+    return { error: `Demasiados intentos. Espera ${formatRetryAfter(rl.retryAfterMs)}.` }
+  }
+
   const email = (formData.get('email') as string)?.trim().toLowerCase()
   const password = formData.get('password') as string
 
@@ -171,6 +195,20 @@ export async function signIn(
       }
     }
     return { error: 'Error al iniciar sesión. Inténtalo de nuevo.' }
+  }
+
+  // Store login fingerprint in user_metadata (readable by admins)
+  const headersList = await headers()
+  const ua = headersList.get('user-agent') ?? ''
+  const uaHash = await hashUA(ua)
+  await supabase.auth.updateUser({
+    data: { last_login_ip: ip, last_login_ua_hash: uaHash },
+  })
+
+  // Check for suspicious activity (non-blocking — errors are caught internally)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    await checkSuspiciousActivity(user.id, ip, 'login')
   }
 
   redirect('/dashboard')
@@ -298,6 +336,13 @@ export async function resetPassword(
   prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  // Rate limit by IP
+  const ip = await getClientIp()
+  const rl = checkRateLimit('resetPassword', ip)
+  if (!rl.ok) {
+    return { error: `Demasiados intentos. Espera ${formatRetryAfter(rl.retryAfterMs)}.` }
+  }
+
   const email = (formData.get('email') as string)?.trim().toLowerCase()
 
   const emailError = validateEmail(email)

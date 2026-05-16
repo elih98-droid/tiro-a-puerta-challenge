@@ -13,7 +13,12 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import { checkRateLimit, formatRetryAfter } from '@/lib/rate-limit'
+import { hashUA } from '@/lib/utils/hash'
+import { checkSuspiciousActivity } from '@/lib/admin/alerts'
 
 /**
  * Creates or updates the user's pick for today.
@@ -37,6 +42,14 @@ export async function submitPick(
   matchDayId: number,
   effectiveDeadline: string,
 ): Promise<{ error?: string }> {
+  // Rate limit by IP
+  const headersList = await headers()
+  const ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const rl = checkRateLimit('submitPick', ip)
+  if (!rl.ok) {
+    return { error: `Demasiados cambios de pick. Espera ${formatRetryAfter(rl.retryAfterMs)}.` }
+  }
+
   const supabase = await createClient()
 
   // 1. Auth check
@@ -110,6 +123,22 @@ export async function submitPick(
     return { error: 'Error al guardar el pick. Intenta de nuevo.' }
   }
 
+  // Record device fingerprint in pick_history (the DB trigger inserted the row
+  // but can't access HTTP headers — we update the most recent entry here).
+  const ua = headersList.get('user-agent') ?? ''
+  const uaHash = await hashUA(ua)
+  const adminClient = createAdminClient()
+  await adminClient
+    .from('pick_history')
+    .update({ ip_address: ip, user_agent_hash: uaHash })
+    .eq('user_id', user.id)
+    .eq('match_day_id', matchDayId)
+    .order('recorded_at', { ascending: false })
+    .limit(1)
+
+  // Check for suspicious activity (errors caught internally, never blocks the user)
+  await checkSuspiciousActivity(user.id, ip, 'pick')
+
   // Refresh both pages so the UI reflects the new pick immediately
   revalidatePath('/pick')
   revalidatePath('/dashboard')
@@ -128,6 +157,14 @@ export async function submitPick(
  * cron will eliminate them for that day (E1 — no_pick).
  */
 export async function removePick(matchDayId: number): Promise<{ error?: string }> {
+  // Rate limit by IP (shares the same pool as submitPick)
+  const headersList = await headers()
+  const ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const rl = checkRateLimit('removePick', ip)
+  if (!rl.ok) {
+    return { error: `Demasiados cambios de pick. Espera ${formatRetryAfter(rl.retryAfterMs)}.` }
+  }
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

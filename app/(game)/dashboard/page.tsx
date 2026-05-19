@@ -159,6 +159,8 @@ export default async function DashboardPage() {
     .order('is_alive',                  { ascending: false })
     .order('total_goals_accumulated',   { ascending: false })
     .order('total_shots_accumulated',   { ascending: false })
+    // Stable tiebreaker so ranks don't shuffle when stats are tied
+    .order('user_id',                   { ascending: true })
 
   const totalUsers = allStatuses?.length ?? 0
   const aliveCount = allStatuses?.filter(s => s.is_alive).length ?? 0

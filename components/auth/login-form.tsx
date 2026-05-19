@@ -1,8 +1,9 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { signIn } from '@/lib/auth/actions'
+import { signIn, resendConfirmationEmail } from '@/lib/auth/actions'
 import { TPMark } from '@/components/brand/tp-mark'
 import { OAuthButtons } from './oauth-buttons'
 
@@ -212,17 +213,27 @@ function Field({
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(signIn, undefined)
+  const searchParams = useSearchParams()
+
+  // Surface OAuth / callback errors passed as ?error= query params
+  const URL_ERROR_MESSAGES: Record<string, string> = {
+    oauth_failed: 'No se pudo iniciar sesión con Google. Intenta de nuevo.',
+    auth_callback_failed: 'El enlace de autenticación falló o expiró. Intenta de nuevo.',
+  }
+  const urlError = searchParams.get('error')
+  const urlErrorMessage = urlError ? URL_ERROR_MESSAGES[urlError] ?? null : null
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw]     = useState(false)
   const [blurred, setBlurred]   = useState({ email: false, password: false })
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  const pwValid    = password.length >= 6
+  const pwValid    = password.length >= 8
 
   const emailErr    = blurred.email    && !emailValid ? 'Ingresa un correo válido'  : ''
-  const passwordErr = blurred.password && !pwValid    ? 'Mínimo 6 caracteres'       : ''
+  const passwordErr = blurred.password && !pwValid    ? 'Mínimo 8 caracteres'       : ''
 
   return (
     <div style={{
@@ -347,6 +358,7 @@ export function LoginForm() {
         {/* ── Formulario ── */}
         <form
           action={action}
+          noValidate
           style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 12 }}
         >
           <Field
@@ -403,9 +415,9 @@ export function LoginForm() {
             </Link>
           </div>
 
-          {/* Banner de error del servidor */}
-          {state?.error && (
-            <div role="alert" aria-live="polite" style={{
+          {/* Banner de error de OAuth / callback (query param) */}
+          {urlErrorMessage && (
+            <div role="alert" style={{
               background: `${P.red}1F`,
               border: `1px solid ${P.red}66`,
               borderRadius: 10,
@@ -415,7 +427,53 @@ export function LoginForm() {
               fontFamily: 'var(--font-archivo), system-ui',
             }}>
               <AlertCircle color={P.red} />
-              {state.error}
+              {urlErrorMessage}
+            </div>
+          )}
+
+          {/* Banner de error del servidor */}
+          {state?.error && (
+            <div role="alert" aria-live="polite" style={{
+              background: `${P.red}1F`,
+              border: `1px solid ${P.red}66`,
+              borderRadius: 10,
+              padding: '10px 12px',
+              display: 'flex', flexDirection: 'column', gap: 8,
+              color: P.red, fontSize: 13, fontWeight: 500,
+              fontFamily: 'var(--font-archivo), system-ui',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <AlertCircle color={P.red} />
+                {state.error}
+              </div>
+              {state.emailNotConfirmed && (
+                <button
+                  type="button"
+                  disabled={resendStatus === 'sending' || resendStatus === 'sent'}
+                  onClick={async () => {
+                    setResendStatus('sending')
+                    const result = await resendConfirmationEmail(email)
+                    setResendStatus(result.success ? 'sent' : 'error')
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: resendStatus === 'sent' ? '#3CAC3B' : P.gold,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-archivo), system-ui',
+                    cursor: resendStatus === 'sent' ? 'default' : 'pointer',
+                    padding: '2px 0',
+                    textAlign: 'left',
+                    textDecoration: resendStatus === 'sent' ? 'none' : 'underline',
+                  }}
+                >
+                  {resendStatus === 'idle' && '¿No te llegó? Reenviar email de confirmación →'}
+                  {resendStatus === 'sending' && 'Enviando...'}
+                  {resendStatus === 'sent' && '✓ Email reenviado. Revisa tu bandeja.'}
+                  {resendStatus === 'error' && 'No se pudo reenviar. Intenta de nuevo.'}
+                </button>
+              )}
             </div>
           )}
 

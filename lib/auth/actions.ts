@@ -53,7 +53,7 @@ async function notifyAdminOfNewSignup(username: string, email: string): Promise<
 // State returned by Server Actions that use useActionState.
 // undefined = action hasn't run yet.
 export type AuthActionState =
-  | { error: string; success?: never }
+  | { error: string; success?: never; emailNotConfirmed?: boolean }
   | { success: string; error?: never }
   | undefined
 
@@ -192,6 +192,7 @@ export async function signIn(
       return {
         error:
           'Primero debes verificar tu email. Revisa tu bandeja de entrada.',
+        emailNotConfirmed: true,
       }
     }
     return { error: 'Error al iniciar sesión. Inténtalo de nuevo.' }
@@ -400,4 +401,34 @@ export async function updatePassword(
   }
 
   redirect('/dashboard')
+}
+
+// ──────────────────────────────────────────────
+// resendConfirmationEmail
+// Resends the signup confirmation email via Supabase.
+// Rate-limited to prevent abuse.
+// ──────────────────────────────────────────────
+
+export async function resendConfirmationEmail(
+  email: string,
+): Promise<{ success?: boolean; error?: string }> {
+  if (!email) return { error: 'Email requerido.' }
+
+  const ip = await getClientIp()
+  const rl = checkRateLimit('resendConfirm', ip)
+  if (!rl.ok) {
+    return { error: `Demasiados intentos. Espera ${formatRetryAfter(rl.retryAfterMs)}.` }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+  })
+
+  if (error) {
+    return { error: 'No se pudo reenviar el email. Intenta de nuevo.' }
+  }
+
+  return { success: true }
 }

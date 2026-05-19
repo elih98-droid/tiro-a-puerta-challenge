@@ -83,13 +83,31 @@ export default async function PickPage({
           prevDate={prevDayRow?.match_date ?? null}
           nextDate={nextDayRow?.match_date ?? null}
         />
-        <p style={{
+        <div style={{
           margin: '16px',
-          fontSize: 13, color: 'rgba(255,255,255,0.4)',
-          fontFamily: 'var(--font-archivo), sans-serif',
+          padding: '28px 22px',
+          background: 'linear-gradient(160deg, #181C36 0%, #06080F 100%)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 14,
+          textAlign: 'center',
         }}>
-          No hay partidos programados para el {targetDate}.
-        </p>
+          <div style={{
+            fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+            fontSize: 22, letterSpacing: 1.5, color: '#fff', lineHeight: 1,
+          }}>
+            {new Date() < new Date('2026-06-11T06:00:00Z')
+              ? 'SABEMOS QUE ESTÁS ANSIOSO, YA CASI ARRANCA'
+              : 'SIN PARTIDOS ESTE DÍA'}
+          </div>
+          <div style={{
+            marginTop: 8, fontSize: 13, color: 'rgba(255,255,255,0.4)',
+            fontFamily: 'var(--font-archivo), sans-serif', lineHeight: 1.5,
+          }}>
+            {new Date() < new Date('2026-06-11T06:00:00Z')
+              ? 'El torneo comienza el 11 de junio. ¡Prepárate!'
+              : 'Usa las flechas para navegar a un día con partidos.'}
+          </div>
+        </div>
       </>
     )
   }

@@ -35,6 +35,8 @@ export default async function LeaderboardPage() {
     .order('is_alive',                  { ascending: false })
     .order('total_goals_accumulated',   { ascending: false })
     .order('total_shots_accumulated',   { ascending: false })
+    // Stable alphabetical tiebreaker so ranks don't shuffle when stats are tied
+    .order('user_id',                   { ascending: true })
 
   // ── Today's revealed picks (only where effective_deadline has passed) ──
   // This powers the "pick of the day" shown next to each username.

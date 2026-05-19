@@ -11,12 +11,15 @@ const ADMIN_ROUTES = ['/admin']
 
 // Routes for unauthenticated users only.
 // An already-authenticated user visiting these gets redirected to /dashboard.
+// NOTE: /update-password is intentionally NOT here. Users arrive at
+// /update-password already authenticated (the /auth/callback exchanged
+// the recovery code for a session). If we listed it here, the middleware
+// would redirect them to /dashboard before they could set a new password.
 const AUTH_ONLY_ROUTES = [
   '/login',
   '/signup',
   '/reset-password',
   '/verify-email',
-  '/update-password',
 ]
 
 export async function proxy(request: NextRequest) {

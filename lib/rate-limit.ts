@@ -43,7 +43,8 @@ export const RATE_LIMITS = {
   signUp: { maxAttempts: 3, windowMs: 60 * 60 * 1000 },       // 3 per 60 min
   resetPassword: { maxAttempts: 3, windowMs: 60 * 60 * 1000 }, // 3 per 60 min
   submitPick: { maxAttempts: 20, windowMs: 5 * 60 * 1000 },   // 20 per 5 min
-  removePick: { maxAttempts: 20, windowMs: 5 * 60 * 1000 },   // 20 per 5 min
+  removePick: { maxAttempts: 20, windowMs: 5 * 60 * 1000 },       // 20 per 5 min
+  resendConfirm: { maxAttempts: 3, windowMs: 15 * 60 * 1000 },   // 3 per 15 min
 } as const;
 
 // ─── Main function ───────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { DashboardPickCard, type DashboardPickCardProps } from '@/components/game/dashboard-pick-card'
+import { WorldCupCountdown } from '@/components/game/world-cup-countdown'
 
 /**
  * Dashboard — /dashboard
@@ -234,6 +235,9 @@ export default async function DashboardPage() {
         rank={userRank}
         alivePercent={alivePercent}
       />
+
+      {/* ── Countdown al Mundial (visible hasta el 11 de junio) ── */}
+      <WorldCupCountdown />
 
       {/* ── Card del pick (o card de eliminado) ── */}
       <div style={{ position: 'relative', zIndex: 2 }}>

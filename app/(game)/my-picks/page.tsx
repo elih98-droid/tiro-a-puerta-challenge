@@ -194,10 +194,11 @@ async function fetchRivalsData(supabase: any, targetDate: string, isToday: boole
     isToday,
     prevDate: prevDayRow?.match_date ?? null,
     nextDate: nextDayRow?.match_date ?? null,
+    hasLiveMatches: false,
   }
 
   if (!matchDay) {
-    return { ...base, picks: [], totalRevealed: 0, totalAlive: 0, pendingMatches: 0 }
+    return { ...base, picks: [], totalRevealed: 0, totalAlive: 0, pendingMatches: 0, hasLiveMatches: false }
   }
 
   const now = new Date().toISOString()
@@ -216,10 +217,14 @@ async function fetchRivalsData(supabase: any, targetDate: string, isToday: boole
 
   // 4. Get all picks for this day where effective_deadline has passed
   //    (only revealed picks — progressive per match)
+  // Filter by approved users only — prevents inflating rival percentages
+  // with picks from users who haven't been approved yet.
   const { data: revealedPicks } = await supabase
     .from('user_picks')
     .select(`
       player_id,
+      match_id,
+      users!inner ( is_approved ),
       players (
         display_name,
         position,
@@ -227,15 +232,53 @@ async function fetchRivalsData(supabase: any, targetDate: string, isToday: boole
       )
     `)
     .eq('match_day_id', matchDay.id)
+    .eq('users.is_approved', true)
     .lte('effective_deadline', now)
 
   if (!revealedPicks || revealedPicks.length === 0) {
-    return { ...base, picks: [], totalRevealed: 0, totalAlive: 0, pendingMatches }
+    return { ...base, picks: [], totalRevealed: 0, totalAlive: 0, pendingMatches, hasLiveMatches: false }
   }
 
-  // 5. Group by player and calculate percentages
+  // 5. Fetch player_match_stats + match status for revealed players
+  //    These power the live stats display in the Rivals tab.
+  const revealedMatchIds = [...new Set(revealedPicks.map((p: { match_id: number }) => p.match_id))]
+  const revealedPlayerIds = [...new Set(revealedPicks.map((p: { player_id: number }) => p.player_id))]
+
+  const [{ data: matchStatuses }, { data: playerStats }] = await Promise.all([
+    supabase
+      .from('matches')
+      .select('id, status, match_minute')
+      .in('id', revealedMatchIds),
+    supabase
+      .from('player_match_stats')
+      .select('player_id, match_id, shots_on_target, goals')
+      .in('match_id', revealedMatchIds)
+      .in('player_id', revealedPlayerIds),
+  ])
+
+  // Build lookup maps
+  const matchStatusMap = new Map<number, { status: string; matchMinute: number | null }>()
+  for (const m of matchStatuses ?? []) {
+    matchStatusMap.set(m.id, { status: m.status, matchMinute: m.match_minute })
+  }
+
+  const playerStatsMap = new Map<string, { shotsOnTarget: number; goals: number }>()
+  for (const s of playerStats ?? []) {
+    playerStatsMap.set(`${s.player_id}-${s.match_id}`, {
+      shotsOnTarget: s.shots_on_target ?? 0,
+      goals: s.goals ?? 0,
+    })
+  }
+
+  const hasLiveMatches = (matchStatuses ?? []).some((m: { status: string }) => m.status === 'live')
+
+  // 6. Group by player and calculate percentages
   const totalRevealed = revealedPicks.length
-  const grouped = new Map<number, { player: { display_name: string; position: string; teams: { name: string } | null }; count: number }>()
+  const grouped = new Map<number, {
+    player: { display_name: string; position: string; teams: { name: string } | null }
+    count: number
+    matchId: number
+  }>()
 
   for (const pick of revealedPicks) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -245,15 +288,16 @@ async function fetchRivalsData(supabase: any, targetDate: string, isToday: boole
     if (existing) {
       existing.count++
     } else {
-      grouped.set(pid, { player, count: 1 })
+      grouped.set(pid, { player, count: 1, matchId: pick.match_id as number })
     }
   }
 
   // Use largest-remainder method so percentages always sum to exactly 100%.
-  // Math.round on each value independently can overshoot (e.g. 38+25+25+13 = 101).
-  const entries = Array.from(grouped.values())
-    .map(({ player, count }) => {
+  const entries = Array.from(grouped.entries())
+    .map(([playerId, { player, count, matchId }]) => {
       const exact = (count / totalRevealed) * 100
+      const matchInfo = matchStatusMap.get(matchId)
+      const stats = playerStatsMap.get(`${playerId}-${matchId}`)
       return {
         playerName: player?.display_name ?? '—',
         position: player?.position ?? '',
@@ -261,6 +305,10 @@ async function fetchRivalsData(supabase: any, targetDate: string, isToday: boole
         count,
         floor: Math.floor(exact),
         remainder: exact - Math.floor(exact),
+        shotsOnTarget: stats?.shotsOnTarget ?? 0,
+        goals: stats?.goals ?? 0,
+        matchStatus: matchInfo?.status ?? 'scheduled',
+        matchMinute: matchInfo?.matchMinute ?? null,
       }
     })
     .sort((a, b) => b.count - a.count)
@@ -280,14 +328,19 @@ async function fetchRivalsData(supabase: any, targetDate: string, isToday: boole
     teamName: e.teamName,
     count: e.count,
     percentage: e.floor,
+    shotsOnTarget: e.shotsOnTarget,
+    goals: e.goals,
+    matchStatus: e.matchStatus,
+    matchMinute: e.matchMinute,
   }))
 
   return {
     ...base,
     picks: rivalPicks,
     totalRevealed,
-    totalAlive: 0, // not used in current UI
+    totalAlive: 0,
     pendingMatches,
+    hasLiveMatches,
   }
 }
 

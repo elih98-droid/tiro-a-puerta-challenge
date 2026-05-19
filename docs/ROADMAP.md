@@ -284,9 +284,9 @@ Auditoría completa realizada el 16 de mayo. Estos son los hallazgos pendientes 
 - [x] Lint limpio — 2 errores + 6 warnings resueltos
 
 **Pendientes — Seguridad y lógica:**
-- [ ] **OAuth redirect usa header `origin`** — `lib/auth/actions.ts:230`. Debería usar `NEXT_PUBLIC_APP_URL` en vez del header (controlable por cliente).
-- [ ] **Rivales incluye picks de no aprobados** — `my-picks/page.tsx`. Infla porcentajes. Filtrar `is_approved = true`.
-- [ ] **Leaderboard: 3er desempate (fecha de registro)** — `game-rules.md §5.3` dice usar `created_at`. No implementado.
+- [x] **OAuth redirect usa header `origin`** — corregido: usa `NEXT_PUBLIC_APP_URL` en `signInWithOAuth` y `resetPasswordForEmail`.
+- [x] **Rivales incluye picks de no aprobados** — corregido: query filtra `users!inner` + `is_approved = true`.
+- [x] ~~**Leaderboard: 3er desempate (fecha de registro)**~~ — Descartado: no es justo. Desempate final = goles → tiros → sorteo. `game-rules.md §5.3` actualizado.
 - [ ] **Deadline de picks no se actualiza si partido se reprograma** — Si un partido cambia de hora, `effective_deadline` del pick queda con el valor viejo. Trigger en `matches` o notificación manual.
 - [x] **Plan de contingencia para partidos interrumpidos** — `sync-live-matches` ahora incluye `suspended` en la query de matches a sincronizar. Force-finish consulta la API antes de forzar: si reporta INT/SUSP, marca como `suspended` en vez de `finished`. Dashboard muestra badge "SUSPENDIDO" (amber) con stats acumulados. Player stats no se fetchean durante la pausa (ahorro de 60 calls/hora). Presupuesto: ~77h de suspensión antes de tocar el límite de API.
 

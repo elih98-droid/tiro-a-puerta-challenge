@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useTransition } from 'react'
+import { useEffect, useTransition } from 'react'
 
 /**
  * RivalsView — "Rivales 🔥" tab content.
@@ -42,6 +42,10 @@ export type RivalPick = {
   teamName: string
   count: number
   percentage: number
+  shotsOnTarget: number
+  goals: number
+  matchStatus: string       // 'scheduled' | 'live' | 'finished' | 'suspended' | 'cancelled'
+  matchMinute: number | null
 }
 
 export type RivalsData = {
@@ -54,6 +58,7 @@ export type RivalsData = {
   totalAlive: number
   picks: RivalPick[]
   pendingMatches: number // matches whose deadline hasn't passed yet
+  hasLiveMatches: boolean
 }
 
 // ── Day Nav (inline, simplified from pick-day-nav) ──
@@ -99,6 +104,15 @@ const BTN = {
 export function RivalsView({ data }: { data: RivalsData }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+
+  // Poll every 60s when matches are live — re-fetches server data
+  useEffect(() => {
+    if (!data.hasLiveMatches) return
+    const interval = setInterval(() => {
+      router.refresh()
+    }, 60_000)
+    return () => clearInterval(interval)
+  }, [data.hasLiveMatches, router])
 
   const navigate = (date: string) => {
     startTransition(() => {
@@ -236,6 +250,11 @@ function PickBar({ pick, rank }: { pick: RivalPick; rank: number }) {
   const barColor = rank === 1 ? P.gold : rank === 2 ? P.blue : rank === 3 ? P.green : 'rgba(255,255,255,0.15)'
   const barBg = rank === 1 ? `${P.gold}20` : 'transparent'
 
+  const isLive = pick.matchStatus === 'live'
+  const isFinished = pick.matchStatus === 'finished'
+  const isStarted = isLive || isFinished
+  const hasShotOnTarget = pick.shotsOnTarget > 0
+
   return (
     <div style={{
       background: barBg || P.panel,
@@ -308,34 +327,106 @@ function PickBar({ pick, rank }: { pick: RivalPick; rank: number }) {
             fontSize: 10, color: P.subDim,
             fontFamily: 'var(--font-archivo), system-ui',
             marginTop: 2,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            {pick.teamName}
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {pick.teamName}
+            </span>
+            {/* Match status badge */}
+            {isLive && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                fontFamily: 'var(--font-jetbrains-mono), monospace',
+                fontSize: 8, fontWeight: 700, letterSpacing: 0.8,
+                color: P.red,
+                flexShrink: 0,
+              }}>
+                <span style={{
+                  width: 4, height: 4, borderRadius: 2,
+                  background: P.red,
+                  animation: 'tpPulse 1.4s ease-in-out infinite',
+                  display: 'inline-block',
+                }} />
+                {pick.matchMinute ? `${pick.matchMinute}'` : 'VIVO'}
+              </span>
+            )}
+            {isFinished && (
+              <span style={{
+                fontFamily: 'var(--font-jetbrains-mono), monospace',
+                fontSize: 8, fontWeight: 700, letterSpacing: 0.8,
+                color: P.subDim,
+                flexShrink: 0,
+              }}>
+                FT
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Percentage */}
+        {/* Stats + Percentage */}
         <div style={{
           flexShrink: 0,
-          textAlign: 'right',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
         }}>
-          <span style={{
-            fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
-            fontSize: isTop ? 24 : 18,
-            color: rank === 1 ? P.gold : P.ink,
-            lineHeight: 1,
-            ...(rank === 1 ? { textShadow: `0 0 12px ${P.gold}44` } : {}),
-          }}>
-            {pick.percentage}
-          </span>
-          <span style={{
-            fontFamily: 'var(--font-jetbrains-mono), monospace',
-            fontSize: 9,
-            color: P.subDim,
-            marginLeft: 1,
-          }}>
-            %
-          </span>
+          {/* Live stats (only shown once the match has started) */}
+          {isStarted && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              {/* Shots on target */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                fontFamily: 'var(--font-jetbrains-mono), monospace',
+                fontSize: 11, fontWeight: 700,
+                color: hasShotOnTarget ? P.green : (isFinished ? P.red : P.subDim),
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                </svg>
+                {pick.shotsOnTarget}
+              </div>
+              {/* Goals */}
+              {pick.goals > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 3,
+                  fontFamily: 'var(--font-jetbrains-mono), monospace',
+                  fontSize: 11, fontWeight: 700,
+                  color: P.gold,
+                  textShadow: `0 0 8px ${P.gold}44`,
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                    <path d="M12 2l2.5 7.5H22l-6 4.5 2.5 7.5L12 17l-6.5 4.5L8 14 2 9.5h7.5z" fill="currentColor" opacity="0.6"/>
+                  </svg>
+                  {pick.goals}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Percentage */}
+          <div style={{ textAlign: 'right', minWidth: 36 }}>
+            <span style={{
+              fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+              fontSize: isTop ? 24 : 18,
+              color: rank === 1 ? P.gold : P.ink,
+              lineHeight: 1,
+              ...(rank === 1 ? { textShadow: `0 0 12px ${P.gold}44` } : {}),
+            }}>
+              {pick.percentage}
+            </span>
+            <span style={{
+              fontFamily: 'var(--font-jetbrains-mono), monospace',
+              fontSize: 9,
+              color: P.subDim,
+              marginLeft: 1,
+            }}>
+              %
+            </span>
+          </div>
         </div>
       </div>
     </div>

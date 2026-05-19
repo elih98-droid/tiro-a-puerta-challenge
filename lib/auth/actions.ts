@@ -229,8 +229,7 @@ export async function signIn(
 
 export async function signInWithOAuth(provider: 'google' | 'apple') {
   const supabase = await createClient()
-  const headersList = await headers()
-  const origin = headersList.get('origin') ?? 'http://localhost:3000'
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -349,8 +348,7 @@ export async function resetPassword(
   if (emailError) return { error: emailError }
 
   const supabase = await createClient()
-  const headersList = await headers()
-  const origin = headersList.get('origin') ?? 'http://localhost:3000'
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?next=/update-password`,

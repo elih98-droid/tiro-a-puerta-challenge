@@ -1,6 +1,6 @@
 # ROADMAP — Tiro a Puerta Challenge: Mundial 2026
 
-**Última actualización:** 15 de mayo de 2026 (anti-cheat completo, emails de contacto configurados, cleanup de pendientes)
+**Última actualización:** 18 de mayo de 2026 (auditoría pre-lanzamiento, WC seeds, app lista para usuarios reales)
 **Deadline duro:** 11 de junio de 2026 (kickoff inaugural, 1:00 pm CDMX)
 
 ---
@@ -283,12 +283,19 @@ Auditoría completa realizada el 16 de mayo. Estos son los hallazgos pendientes 
 - [x] `evaluate-picks` — verificar existencia de stats antes de evaluar (previene eliminación por sync failure)
 - [x] Lint limpio — 2 errores + 6 warnings resueltos
 
-**Pendientes — Seguridad y lógica:**
+**Resueltos en sesiones 16–18 mayo:**
 - [x] **OAuth redirect usa header `origin`** — corregido: usa `NEXT_PUBLIC_APP_URL` en `signInWithOAuth` y `resetPasswordForEmail`.
 - [x] **Rivales incluye picks de no aprobados** — corregido: query filtra `users!inner` + `is_approved = true`.
-- [x] ~~**Leaderboard: 3er desempate (fecha de registro)**~~ — Descartado: no es justo. Desempate final = goles → tiros → sorteo. `game-rules.md §5.3` actualizado.
-- [ ] **Deadline de picks no se actualiza si partido se reprograma** — Si un partido cambia de hora, `effective_deadline` del pick queda con el valor viejo. Trigger en `matches` o notificación manual.
-- [x] **Plan de contingencia para partidos interrumpidos** — `sync-live-matches` ahora incluye `suspended` en la query de matches a sincronizar. Force-finish consulta la API antes de forzar: si reporta INT/SUSP, marca como `suspended` en vez de `finished`. Dashboard muestra badge "SUSPENDIDO" (amber) con stats acumulados. Player stats no se fetchean durante la pausa (ahorro de 60 calls/hora). Presupuesto: ~77h de suspensión antes de tocar el límite de API.
+- [x] ~~**Leaderboard: 3er desempate (fecha de registro)**~~ — Descartado: empate en Top 5 = premios compartidos, sin sorteo.
+- [x] **Plan de contingencia para partidos interrumpidos** — `sync-live-matches` maneja `suspended`; force-finish consulta API; badge SUSPENDIDO amber.
+- [x] **`/update-password` bloqueado por middleware** — removido de `AUTH_ONLY_ROUTES` (rompía reset de contraseña).
+- [x] **Errores de OAuth no visibles en login** — `?error=` search params ahora se muestran como banner rojo.
+- [x] **Reenvío de email de confirmación** — action `resendConfirmationEmail` + botón en login.
+- [x] **Tiebreaker estable en ranking** — `user_id ASC` como 4to criterio (cosmético).
+- [x] **Login: password >= 8 + `noValidate`** — alineado con signup.
+
+**Pendientes — Lógica:**
+- [ ] **Deadline de picks no se actualiza si partido se reprograma** — `effective_deadline` queda con valor viejo.
 
 **Pendientes — Performance (nice-to-have para 400 users):**
 - [ ] Polling sin jitter en `dashboard-pick-card` y `live-match-stats` — thundering herd a escala.
@@ -326,18 +333,18 @@ Estas decisiones están pendientes. Cuando estén resueltas, actualizar tareas a
 | Dashboard del usuario | ✅ Completo (básico) |
 | Integración API-Football + pruebas Premier League | ✅ Completo — prueba en vivo superada (22 abr) |
 | Evaluación automática de picks (cron) | ✅ Completo — loop end-to-end verificado (22 abr) |
-| Precarga de datos del Mundial | ⏳ Pendiente (~1 semana antes del 11 jun) |
+| Precarga de datos del Mundial | 🔄 Parcial — 48 equipos + 72 partidos grupo seedeados. Falta: jugadores (~1 sem antes) |
 | Mecánica de picks | ✅ Completo |
 | Mis picks (/my-picks) + Rivales 🔥 | ✅ Completo |
 | Tracker en vivo del pick | ✅ Completo |
 | PWA (manifest + íconos + safe areas) | ✅ Completo — instalable en Android y iOS |
 | Diseño visual (tareas 8–9) | ✅ Completo — todas las pantallas + responsividad desktop |
-| Leaderboard | ✅ Completo (pick de hoy pendiente) |
+| Leaderboard | ✅ Completo — pick de hoy por usuario (post-deadline), Top 50 con tiebreaker estable |
 | Evaluación automática (cron) | ✅ Completo |
 | Emails transaccionales | ✅ Completo — 7 emails con marca, dominio propio `tiroapuerta.mx` |
 | Términos y Condiciones + Privacidad | ✅ Completo — `/terms` con 21 secciones, checkbox obligatorio, `terms_accepted_at` en DB |
 | Anti-trampa y seguridad | ✅ Completo — rate limiting, fingerprinting, alertas automáticas |
-| Auditoría pre-Mundial | 🔄 En progreso — 7 fixes aplicados, ~8 pendientes (ver §15) |
+| Auditoría pre-Mundial | ✅ Completo — auditoría de seguridad + pre-lanzamiento, app lista para usuarios reales |
 | Perfil de usuario | 🔄 Parcial (username, marketing opt-in, logout, reglas; eliminar cuenta pendiente) |
 | Tests críticos | 🔄 Parcial (evaluate-pick ✅, resto validado en producción) |
 | Monitoreo y producción | 🔄 Parcial (Sentry + Analytics listos) |

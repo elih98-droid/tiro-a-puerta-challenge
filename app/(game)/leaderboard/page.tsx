@@ -36,6 +36,36 @@ export default async function LeaderboardPage() {
     .order('total_goals_accumulated',   { ascending: false })
     .order('total_shots_accumulated',   { ascending: false })
 
+  // ── Today's revealed picks (only where effective_deadline has passed) ──
+  // This powers the "pick of the day" shown next to each username.
+  // CRITICAL: only show picks whose deadline has passed to protect game integrity.
+  const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+  const now = new Date().toISOString()
+
+  const todayPickMap = new Map<string, string>() // user_id → player display_name
+
+  const { data: todayMatchDay } = await supabase
+    .from('match_days')
+    .select('id')
+    .eq('match_date', todayDate)
+    .maybeSingle()
+
+  if (todayMatchDay) {
+    const { data: revealedPicks } = await supabase
+      .from('user_picks')
+      .select('user_id, players ( display_name )')
+      .eq('match_day_id', todayMatchDay.id)
+      .lte('effective_deadline', now)
+
+    for (const pick of revealedPicks ?? []) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const playerName = (pick.players as any)?.display_name
+      if (playerName) {
+        todayPickMap.set(pick.user_id, playerName)
+      }
+    }
+  }
+
   if (error || !rows) {
     return (
       <div style={{ margin: '24px 16px' }}>
@@ -132,6 +162,7 @@ export default async function LeaderboardPage() {
                 key={row.user_id}
                 rank={row.rank}
                 username={username}
+                todayPick={todayPickMap.get(row.user_id) ?? null}
                 shots={row.total_shots_accumulated}
                 goals={row.total_goals_accumulated}
                 isAlive={true}
@@ -172,6 +203,7 @@ export default async function LeaderboardPage() {
                   key={row.user_id}
                   rank={null}
                   username={username}
+                  todayPick={todayPickMap.get(row.user_id) ?? null}
                   shots={row.total_shots_accumulated}
                   goals={row.total_goals_accumulated}
                   isAlive={false}
@@ -204,6 +236,7 @@ export default async function LeaderboardPage() {
 function RankRow({
   rank,
   username,
+  todayPick,
   shots,
   goals,
   isAlive,
@@ -212,6 +245,7 @@ function RankRow({
 }: {
   rank: number | null
   username: string
+  todayPick: string | null
   shots: number
   goals: number
   isAlive: boolean
@@ -258,7 +292,7 @@ function RankRow({
         {rank ?? '—'}
       </div>
 
-      {/* Username + "tú" badge */}
+      {/* Username + today's pick */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
@@ -286,6 +320,17 @@ function RankRow({
             </span>
           )}
         </div>
+        {todayPick && (
+          <div style={{
+            fontFamily: 'var(--font-archivo), sans-serif',
+            fontSize: 10,
+            color: 'rgba(255,255,255,0.35)',
+            marginTop: 1,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            Hoy: {todayPick}
+          </div>
+        )}
       </div>
 
       {/* Goals */}

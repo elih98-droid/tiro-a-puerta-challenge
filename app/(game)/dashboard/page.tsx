@@ -118,7 +118,11 @@ export default async function DashboardPage() {
     // ELIMINADO — no se muestra pick card
     pickCardProps = { state: 'rest' } // dummy, no se usa (renderizamos EliminatedCard)
   } else if (!todayMatchDay) {
-    pickCardProps = { state: 'rest' }
+    // Before the World Cup starts (Jun 11 2026) → welcome message.
+    // During the tournament on a rest day → "no matches today" card.
+    const worldCupStart = new Date('2026-06-11T00:00:00-06:00') // midnight CDMX
+    const isPreMundial = new Date() < worldCupStart
+    pickCardProps = { state: isPreMundial ? 'welcome' : 'rest' }
   } else if (!todayPick) {
     pickCardProps = {
       state: 'urgent',

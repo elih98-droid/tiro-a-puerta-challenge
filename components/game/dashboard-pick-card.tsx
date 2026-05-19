@@ -3,10 +3,11 @@
 /**
  * DashboardPickCard — Card interactiva del pick en el dashboard.
  *
- * 3 estados:
+ * 4 estados:
+ *   - 'welcome': pre-Mundial, sin partidos aún                        → mensaje de bienvenida
  *   - 'urgent' : usuario vivo, hay partidos hoy, NO ha elegido jugador → countdown + CTA
  *   - 'live'   : usuario vivo, hay partidos hoy, ha elegido jugador   → stats en vivo (polling 60s)
- *   - 'rest'   : usuario vivo, sin partidos hoy                       → mensaje de descanso
+ *   - 'rest'   : usuario vivo, sin partidos hoy (durante el Mundial)  → mensaje de descanso
  *
  * Client Component porque:
  *   - 'urgent' usa useState/useEffect para el countdown
@@ -36,7 +37,7 @@ const P = {
 // ── Props ─────────────────────────────────────────────────────
 
 export interface DashboardPickCardProps {
-  state: 'urgent' | 'live' | 'rest'
+  state: 'urgent' | 'live' | 'rest' | 'welcome'
 
   // 'urgent' state
   deadline?: string | null            // ISO timestamp — pick_window_closes_at
@@ -552,6 +553,45 @@ function LiveCard({
 
 // ── Estado: SIN PARTIDOS ──────────────────────────────────────
 
+function WelcomeCard() {
+  return (
+    <div style={{
+      margin: '12px 16px 0',
+      padding: '28px 22px 26px',
+      background: `linear-gradient(160deg, ${P.panel} 0%, ${P.bgDeep} 100%)`,
+      border: `1px solid ${P.gold}33`,
+      borderRadius: 14,
+      textAlign: 'center',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <GoldCorners />
+
+      <div style={{
+        fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+        fontSize: 28, letterSpacing: 2, color: P.ink, lineHeight: 1,
+      }}>
+        BIENVENIDO AL CHALLENGE.
+      </div>
+
+      <div style={{
+        marginTop: 12, fontSize: 15, color: P.sub, lineHeight: 1.5,
+        fontFamily: 'var(--font-archivo), system-ui',
+        fontWeight: 500,
+      }}>
+        Todos dicen que conocen a la bocha.
+      </div>
+
+      <div style={{
+        marginTop: 6,
+        fontFamily: 'var(--font-bebas-neue), Impact, sans-serif',
+        fontSize: 22, letterSpacing: 1.5, color: P.gold, lineHeight: 1,
+      }}>
+        DEMUÉSTRALO.
+      </div>
+    </div>
+  )
+}
+
 function RestCard() {
   return (
     <div style={{
@@ -611,6 +651,10 @@ function RestCard() {
 // ── Export principal ──────────────────────────────────────────
 
 export function DashboardPickCard(props: DashboardPickCardProps) {
+  if (props.state === 'welcome') {
+    return <WelcomeCard />
+  }
+
   if (props.state === 'rest') {
     return <RestCard />
   }

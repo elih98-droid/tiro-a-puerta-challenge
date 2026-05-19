@@ -103,7 +103,16 @@ export default async function LeaderboardPage() {
           fontSize: 32, letterSpacing: 1.5, color: '#fff', lineHeight: 1,
           marginBottom: 8,
         }}>
-          Ranking
+          Ranking — Top 50
+        </div>
+
+        <div style={{
+          fontFamily: 'var(--font-jetbrains-mono), monospace',
+          fontSize: 9, letterSpacing: 0.8,
+          color: 'rgba(255,255,255,0.25)',
+          marginBottom: 8,
+        }}>
+          Escala al Top 50 para aparecer en el ranking.
         </div>
 
         {/* Stats pill — percentage of alive users */}
@@ -224,7 +233,7 @@ export default async function LeaderboardPage() {
           fontSize: 9, letterSpacing: 0.8,
           color: 'rgba(255,255,255,0.2)',
         }}>
-          Orden: vivos primero → goles acumulados → tiros totales (§5.1 + §5.3)
+          Orden: vivos primero → goles acumulados → tiros totales.
         </div>
       )}
     </>
